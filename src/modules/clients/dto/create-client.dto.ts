@@ -16,4 +16,8 @@ export class CreateClientDto {
   @IsString()
   @IsOptional()
   ubicacion_url?: string;
+
+  @IsString()
+  @IsOptional()
+  tipo_cliente?: string;
 }

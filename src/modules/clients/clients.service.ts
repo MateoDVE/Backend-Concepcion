@@ -27,18 +27,31 @@ export class ClientsService {
     return client;
   }
 
-  async create(dto: CreateClientDto) {
+  async create(dto: CreateClientDto, user: any) {
     return this.clientRepo.create({
       nombre: dto.nombre,
       telefono: dto.telefono,
       direccion: dto.direccion,
       ubicacion_url: dto.ubicacion_url ?? null,
+      tipo_cliente: dto.tipo_cliente ?? null,
+      creado_por_id: user.id,
+      creado_por_nombre: user.nombre,
+      actualizado_por_id: null,
+      actualizado_por_nombre: null,
     });
   }
 
-  async update(id: string, dto: UpdateClientDto) {
+  async update(id: string, dto: UpdateClientDto, user: any) {
     await this.findById(id); // Valida que exista
-    return this.clientRepo.update(id, dto);
+    return this.clientRepo.update(id, {
+      nombre: dto.nombre,
+      telefono: dto.telefono,
+      direccion: dto.direccion,
+      ubicacion_url: dto.ubicacion_url,
+      tipo_cliente: dto.tipo_cliente,
+      actualizado_por_id: user.id,
+      actualizado_por_nombre: user.nombre,
+    });
   }
 
   async delete(id: string) {
