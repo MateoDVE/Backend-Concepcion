@@ -108,6 +108,7 @@ export class PrismaOrderRepository implements IOrderRepository {
       cantidad: number;
       precio_aplicado: number;
     }>;
+    fecha_entrega?: Date | null;
   }): Promise<Order> {
     const created = await this.prisma.pedido.create({
       data: {
@@ -116,6 +117,7 @@ export class PrismaOrderRepository implements IOrderRepository {
         vendedor_id: order.vendedor_id,
         estado: order.estado,
         total: order.total,
+        fecha_entrega: order.fecha_entrega,
         detalles: {
           create: order.detalles.map((d) => ({
             producto_id: d.producto_id,

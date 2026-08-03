@@ -9,13 +9,18 @@ import { Cliente, PrecioCliente } from '@prisma/client';
 export class PrismaClientRepository implements IClientRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  private mapToClient(dbClient: Cliente): Client {
+  private mapToClient(dbClient: Cliente & { creado_por?: any; actualizado_por?: any }): Client {
     return {
       id: dbClient.id,
       nombre: dbClient.nombre,
       telefono: dbClient.telefono,
       direccion: dbClient.direccion,
       ubicacion_url: dbClient.ubicacion_url,
+      tipo_cliente: dbClient.tipo_cliente,
+      creado_por_id: dbClient.creado_por_id,
+      creado_por_nombre: dbClient.creado_por?.nombre || null,
+      actualizado_por_id: dbClient.actualizado_por_id,
+      actualizado_por_nombre: dbClient.actualizado_por?.nombre || null,
       created_at: dbClient.created_at ?? new Date(),
       updated_at: dbClient.updated_at ?? new Date(),
     };
@@ -33,7 +38,13 @@ export class PrismaClientRepository implements IClientRepository {
   }
 
   async findById(id: string): Promise<Client | null> {
-    const client = await this.prisma.cliente.findUnique({ where: { id } });
+    const client = await this.prisma.cliente.findUnique({
+      where: { id },
+      include: {
+        creado_por: true,
+        actualizado_por: true,
+      },
+    });
     return client ? this.mapToClient(client) : null;
   }
 
@@ -49,6 +60,10 @@ export class PrismaClientRepository implements IClientRepository {
 
     const clients = await this.prisma.cliente.findMany({
       where,
+      include: {
+        creado_por: true,
+        actualizado_por: true,
+      },
       orderBy: { nombre: 'asc' },
     });
     return clients.map((c) => this.mapToClient(c));
@@ -61,6 +76,13 @@ export class PrismaClientRepository implements IClientRepository {
         telefono: client.telefono,
         direccion: client.direccion,
         ubicacion_url: client.ubicacion_url,
+        tipo_cliente: client.tipo_cliente,
+        creado_por_id: client.creado_por_id,
+        creado_por_nombre: client.creado_por_nombre,
+      },
+      include: {
+        creado_por: true,
+        actualizado_por: true,
       },
     });
     return this.mapToClient(created);
@@ -77,6 +99,13 @@ export class PrismaClientRepository implements IClientRepository {
         telefono: client.telefono,
         direccion: client.direccion,
         ubicacion_url: client.ubicacion_url,
+        tipo_cliente: client.tipo_cliente,
+        actualizado_por_id: client.actualizado_por_id,
+        actualizado_por_nombre: client.actualizado_por_nombre,
+      },
+      include: {
+        creado_por: true,
+        actualizado_por: true,
       },
     });
     return this.mapToClient(updated);

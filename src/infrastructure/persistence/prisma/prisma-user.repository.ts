@@ -15,7 +15,7 @@ export class PrismaUserRepository implements IUserRepository {
       usuario: dbUser.usuario,
       contrasena_hash: dbUser.contrasena_hash,
       nombre: dbUser.nombre,
-      rol: dbUser.rol as 'admin' | 'vendedor',
+      rol: dbUser.rol as 'admin' | 'vendedor' | 'almacen',
       activo: dbUser.activo ?? true,
       created_at: dbUser.created_at ?? new Date(),
       updated_at: dbUser.updated_at ?? new Date(),
