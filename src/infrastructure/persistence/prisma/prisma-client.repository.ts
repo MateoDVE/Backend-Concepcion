@@ -69,7 +69,7 @@ export class PrismaClientRepository implements IClientRepository {
     return clients.map((c) => this.mapToClient(c));
   }
 
-  async create(client: Omit<Client, 'id' | 'created_at' | 'updated_at'>): Promise<Client> {
+  async create(client: Omit<Client, 'id' | 'created_at' | 'updated_at'> & { precios_especiales?: { producto_id: string; precio_especial: number }[] }): Promise<Client> {
     const created = await this.prisma.cliente.create({
       data: {
         nombre: client.nombre,
@@ -79,6 +79,12 @@ export class PrismaClientRepository implements IClientRepository {
         tipo_cliente: client.tipo_cliente,
         creado_por_id: client.creado_por_id,
         creado_por_nombre: client.creado_por_nombre,
+        precios_clientes: client.precios_especiales && client.precios_especiales.length > 0 ? {
+          create: client.precios_especiales.map((pe) => ({
+            producto_id: pe.producto_id,
+            precio_especial: pe.precio_especial,
+          })),
+        } : undefined,
       },
       include: {
         creado_por: true,

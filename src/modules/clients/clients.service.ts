@@ -38,6 +38,7 @@ export class ClientsService {
       creado_por_nombre: user.nombre,
       actualizado_por_id: null,
       actualizado_por_nombre: null,
+      precios_especiales: dto.precios_especiales,
     });
   }
 

@@ -41,6 +41,8 @@ model Cliente {
   pedidos                Pedido[]
   precios_clientes       PrecioCliente[]
 
+  @@index([creado_por_id])
+  @@index([actualizado_por_id])
   @@map("clientes")
 }
 
@@ -104,6 +106,10 @@ model Pedido {
   vendedor       Vendedor?       @relation(fields: [vendedor_id], references: [id], onDelete: SetNull)
   detalles       DetallePedido[]
 
+  @@index([cliente_id])
+  @@index([vendedor_id])
+  @@index([estado])
+  @@index([fecha_creacion])
   @@map("pedidos")
 }
 
@@ -148,5 +154,8 @@ model RegistroStock {
   producto     Producto  @relation(fields: [producto_id], references: [id], onDelete: Cascade)
   usuario      Usuario   @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
 
+  @@index([producto_id])
+  @@index([usuario_id])
+  @@index([created_at])
   @@map("registro_stock")
 }
