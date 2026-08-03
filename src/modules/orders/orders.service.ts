@@ -98,14 +98,28 @@ export class OrdersService {
       totalAcumulado += detail.cantidad * precioFinal;
     }
 
-    return this.orderRepo.create({
+    const createdOrder = await this.orderRepo.create({
       codigo,
       cliente_id: dto.cliente_id,
       vendedor_id: dto.vendedor_id ?? null,
       estado: dto.estado ?? 'pending',
       total: totalAcumulado,
       detalles: detallesProcesados,
+      fecha_entrega: dto.estado === 'delivered' ? new Date() : null,
     });
+
+    // Descontar del inventario si se crea directamente como entregado
+    if (dto.estado === 'delivered') {
+      for (const detail of detallesProcesados) {
+        try {
+          await this.productRepo.updateStock(detail.producto_id, -detail.cantidad);
+        } catch (err: any) {
+          throw new BadRequestException(`No se pudo procesar la entrega. Error de inventario: ${err.message}`);
+        }
+      }
+    }
+
+    return createdOrder;
   }
 
   async updateStatus(id: string, dto: UpdateOrderStatusDto) {

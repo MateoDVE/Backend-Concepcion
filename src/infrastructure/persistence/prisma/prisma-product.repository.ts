@@ -80,4 +80,69 @@ export class PrismaProductRepository implements IProductRepository {
     });
     return this.mapToProduct(updated);
   }
+
+  async updateStockAndLog(id: string, amount: number, userId: string): Promise<Product> {
+    if (amount <= 0) {
+      // Just update the stock without logging (e.g. negative adjustments by admin)
+      return this.updateStock(id, amount);
+    }
+    
+    // Positive addition: update stock and log it in transaction
+    const [updatedProduct] = await this.prisma.$transaction([
+      this.prisma.producto.update({
+        where: { id },
+        data: {
+          stock: {
+            increment: amount,
+          },
+        },
+      }),
+      this.prisma.registroStock.create({
+        data: {
+          producto_id: id,
+          cantidad: amount,
+          usuario_id: userId,
+        },
+      }),
+    ]);
+    return this.mapToProduct(updatedProduct);
+  }
+
+  async getProductionReport(dateStr?: string): Promise<any[]> {
+    let targetDate = new Date();
+    if (dateStr) {
+      targetDate = new Date(dateStr + 'T00:00:00');
+    }
+
+    const startOfDay = new Date(targetDate);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(targetDate);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    return this.prisma.registroStock.findMany({
+      where: {
+        created_at: {
+          gte: startOfDay,
+          lte: endOfDay,
+        },
+      },
+      include: {
+        producto: {
+          select: {
+            nombre: true,
+            unidad: true,
+          },
+        },
+        usuario: {
+          select: {
+            nombre: true,
+          },
+        },
+      },
+      orderBy: {
+        created_at: 'desc',
+      },
+    });
+  }
 }

@@ -46,11 +46,15 @@ export class ProductsService {
     return { success: true };
   }
 
-  async updateStock(id: string, amount: number) {
+  async updateStockAndLog(id: string, amount: number, userId: string) {
     const product = await this.findById(id); // Valida que exista
     if (product.stock + amount < 0) {
       throw new BadRequestException(`El stock resultante no puede ser menor a 0. Stock actual: ${product.stock}`);
     }
-    return this.productRepo.updateStock(id, amount);
+    return this.productRepo.updateStockAndLog(id, amount, userId);
+  }
+
+  async getProductionReport(dateStr?: string) {
+    return this.productRepo.getProductionReport(dateStr);
   }
 }

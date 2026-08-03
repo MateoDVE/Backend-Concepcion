@@ -190,6 +190,30 @@ async function main() {
       console.log(`Vendedor Juan Perez creado de cero (ID: ${newV2.id}) y vinculado.`);
     }
 
+    // --- 4. Warehouse User: Encargado Almacén ---
+    const almacenEmail = 'almacen@concepcion.com';
+    const almacenUid = await getOrCreateSupabaseUser(almacenEmail, 'Almacen123!');
+
+    console.log('Registrando Encargado de Almacén en la tabla local "usuarios"...');
+    await prisma.usuario.upsert({
+      where: { id: almacenUid },
+      update: {
+        usuario: 'almacen',
+        nombre: 'Encargado Almacén y Producción',
+        rol: 'almacen',
+        activo: true
+      },
+      create: {
+        id: almacenUid,
+        usuario: 'almacen',
+        contrasena_hash: 'auth_by_supabase',
+        nombre: 'Encargado Almacén y Producción',
+        rol: 'almacen',
+        activo: true
+      }
+    });
+    console.log(`Encargado de Almacén registrado con éxito.`);
+
     console.log('--- Proceso de Sembrado Completado Correctamente ---');
   } catch (error) {
     console.error('Error durante el sembrado de usuarios:', error);

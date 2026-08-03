@@ -12,19 +12,19 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Get('me')
-  @Roles('admin', 'vendedor')
+  @Roles('admin', 'vendedor', 'almacen')
   async getMe(@Request() req) {
     return req.user;
   }
 
   @Get('vendors')
-  @Roles('admin', 'vendedor')
+  @Roles('admin', 'vendedor', 'almacen')
   async findAllVendors() {
     return this.usersService.findAllVendors();
   }
 
   @Get('vendors/:id')
-  @Roles('admin', 'vendedor')
+  @Roles('admin', 'vendedor', 'almacen')
   async findVendorById(@Param('id') id: string) {
     return this.usersService.findVendorById(id);
   }
