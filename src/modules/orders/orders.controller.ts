@@ -13,7 +13,7 @@ export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
   @Get()
-  @Roles('admin', 'vendedor')
+  @Roles('admin', 'vendedor', 'almacen')
   async findAll(
     @Query('estado') estado?: string,
     @Query('vendedor_id') vendedorId?: string,
@@ -33,7 +33,7 @@ export class OrdersController {
   }
 
   @Get(':id')
-  @Roles('admin', 'vendedor')
+  @Roles('admin', 'vendedor', 'almacen')
   async findById(@Param('id') id: string) {
     return this.ordersService.findById(id);
   }

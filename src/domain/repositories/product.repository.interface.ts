@@ -7,4 +7,6 @@ export interface IProductRepository {
   update(id: string, product: Partial<Omit<Product, 'id' | 'created_at' | 'updated_at'>>): Promise<Product>;
   delete(id: string): Promise<boolean>;
   updateStock(id: string, amount: number): Promise<Product>;
+  updateStockAndLog(id: string, amount: number, userId: string): Promise<Product>;
+  getProductionReport(dateStr?: string): Promise<any[]>;
 }

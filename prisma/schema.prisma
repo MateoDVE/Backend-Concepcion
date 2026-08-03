@@ -7,30 +7,42 @@ generator client {
 }
 
 model Usuario {
-  id              String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  usuario         String    @unique @db.VarChar(50)
-  contrasena_hash String    @db.VarChar(255)
-  nombre          String    @db.VarChar(150)
-  rol             String    @db.VarChar(20) // 'admin' | 'vendedor'
-  activo          Boolean?  @default(true)
-  created_at      DateTime? @default(now()) @db.Timestamptz(6)
-  updated_at      DateTime? @default(now()) @db.Timestamptz(6)
-  vendedor        Vendedor?
+  id                    String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  usuario               String    @unique @db.VarChar(50)
+  contrasena_hash       String    @db.VarChar(255)
+  nombre                String    @db.VarChar(150)
+  rol                   String    @db.VarChar(20) // 'admin' | 'vendedor' | 'almacen'
+  activo                Boolean?  @default(true)
+  created_at            DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime? @default(now()) @db.Timestamptz(6)
+  vendedor              Vendedor?
+  clientes_creados      Cliente[] @relation("ClientesCreados")
+  clientes_actualizados Cliente[] @relation("ClientesActualizados")
+  registros_stock       RegistroStock[]
 
   @@map("usuarios")
 }
 
 model Cliente {
-  id               String          @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  nombre           String          @db.VarChar(150)
-  telefono         String          @db.VarChar(20)
-  direccion        String
-  ubicacion_url    String?
-  created_at       DateTime?       @default(now()) @db.Timestamptz(6)
-  updated_at       DateTime?       @default(now()) @db.Timestamptz(6)
-  pedidos          Pedido[]
-  precios_clientes PrecioCliente[]
+  id                     String          @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  nombre                 String          @db.VarChar(150)
+  telefono               String          @db.VarChar(20)
+  direccion              String
+  ubicacion_url          String?
+  tipo_cliente           String?         @db.VarChar(50)
+  created_at             DateTime?       @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime?       @default(now()) @db.Timestamptz(6)
+  creado_por_id          String?         @db.Uuid
+  creado_por_nombre      String?         @db.VarChar(150)
+  creado_por             Usuario?        @relation("ClientesCreados", fields: [creado_por_id], references: [id], onDelete: SetNull)
+  actualizado_por_id     String?         @db.Uuid
+  actualizado_por_nombre String?         @db.VarChar(150)
+  actualizado_por        Usuario?        @relation("ClientesActualizados", fields: [actualizado_por_id], references: [id], onDelete: SetNull)
+  pedidos                Pedido[]
+  precios_clientes       PrecioCliente[]
 
+  @@index([creado_por_id])
+  @@index([actualizado_por_id])
   @@map("clientes")
 }
 
@@ -44,6 +56,7 @@ model Producto {
   updated_at       DateTime?       @default(now()) @db.Timestamptz(6)
   precios_clientes PrecioCliente[]
   detalle_pedidos  DetallePedido[]
+  registros_stock  RegistroStock[]
 
   @@map("productos")
 }
@@ -93,6 +106,10 @@ model Pedido {
   vendedor       Vendedor?       @relation(fields: [vendedor_id], references: [id], onDelete: SetNull)
   detalles       DetallePedido[]
 
+  @@index([cliente_id])
+  @@index([vendedor_id])
+  @@index([estado])
+  @@index([fecha_creacion])
   @@map("pedidos")
 }
 
@@ -125,4 +142,20 @@ model CierreDiario {
 
   @@unique([fecha, vendedor_id], map: "uq_fecha_vendedor")
   @@map("cierres_diarios")
+}
+
+model RegistroStock {
+  id           String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  producto_id  String    @db.Uuid
+  cantidad     Int
+  usuario_id   String    @db.Uuid
+  created_at   DateTime? @default(now()) @db.Timestamptz(6)
+  
+  producto     Producto  @relation(fields: [producto_id], references: [id], onDelete: Cascade)
+  usuario      Usuario   @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+
+  @@index([producto_id])
+  @@index([usuario_id])
+  @@index([created_at])
+  @@map("registro_stock")
 }

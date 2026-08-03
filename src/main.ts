@@ -1,9 +1,13 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
+import compression from 'compression';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // Habilitar compresión HTTP Gzip para optimizar transferencia
+  app.use(compression());
 
   // Habilitar CORS para permitir peticiones desde el frontend de Angular
   app.enableCors();

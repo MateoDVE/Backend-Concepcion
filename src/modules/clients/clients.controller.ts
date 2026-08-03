@@ -6,6 +6,7 @@ import { SetSpecialPriceDto } from './dto/set-special-price.dto';
 import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { CurrentUser } from '../auth/current-user.decorator';
 
 @Controller('clients')
 @UseGuards(SupabaseAuthGuard, RolesGuard)
@@ -13,27 +14,31 @@ export class ClientsController {
   constructor(private readonly clientsService: ClientsService) {}
 
   @Get()
-  @Roles('admin', 'vendedor')
+  @Roles('admin', 'vendedor', 'almacen')
   async findAll(@Query('search') search?: string) {
     return this.clientsService.findAll(search);
   }
 
   @Get(':id')
-  @Roles('admin', 'vendedor')
+  @Roles('admin', 'vendedor', 'almacen')
   async findById(@Param('id') id: string) {
     return this.clientsService.findById(id);
   }
 
   @Post()
-  @Roles('admin')
-  async create(@Body() dto: CreateClientDto) {
-    return this.clientsService.create(dto);
+  @Roles('admin', 'vendedor')
+  async create(@Body() dto: CreateClientDto, @CurrentUser() user: any) {
+    return this.clientsService.create(dto, user);
   }
 
   @Put(':id')
   @Roles('admin')
-  async update(@Param('id') id: string, @Body() dto: UpdateClientDto) {
-    return this.clientsService.update(id, dto);
+  async update(
+    @Param('id') id: string,
+    @Body() dto: UpdateClientDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.clientsService.update(id, dto, user);
   }
 
   @Delete(':id')

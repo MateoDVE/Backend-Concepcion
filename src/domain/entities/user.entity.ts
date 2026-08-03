@@ -3,7 +3,7 @@ export interface User {
   usuario: string;
   contrasena_hash: string;
   nombre: string;
-  rol: 'admin' | 'vendedor';
+  rol: 'admin' | 'vendedor' | 'almacen';
   activo: boolean;
   created_at: Date;
   updated_at: Date;

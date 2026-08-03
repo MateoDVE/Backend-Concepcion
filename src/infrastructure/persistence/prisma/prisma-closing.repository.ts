@@ -127,7 +127,7 @@ export class PrismaClosingRepository implements IClosingRepository {
       FROM pedidos
       WHERE (fecha_creacion AT TIME ZONE 'America/La_Paz')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'America/La_Paz')::date
         AND vendedor_id IS NOT NULL
-      GROUP BY fecha
+      GROUP BY (CURRENT_TIMESTAMP AT TIME ZONE 'America/La_Paz')::date::text
       ORDER BY fecha DESC;
     `;
     return results;
