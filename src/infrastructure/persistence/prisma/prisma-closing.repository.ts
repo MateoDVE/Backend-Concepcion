@@ -70,80 +70,66 @@ export class PrismaClosingRepository implements IClosingRepository {
     const startOfDay = new Date(fecha);
     startOfDay.setHours(0, 0, 0, 0);
 
-    try {
-      const results: any[] = await this.prisma.$queryRaw`
-        SELECT * FROM v_reporte_diario_operativo;
-      `;
-      return results;
-    } catch {
-      // Si la vista no existe en Supabase, ejecutamos la consulta nativa equivalente
-      const results: any[] = await this.prisma.$queryRaw`
-        SELECT 
-            ${startOfDay}::date AS fecha,
-            v.id AS vendedor_id,
-            v.nombre AS vendedor_nombre,
-            COUNT(p.id)::int AS total_pedidos,
-            SUM(CASE WHEN p.estado = 'delivered' THEN 1 ELSE 0 END)::int AS entregados,
-            SUM(CASE WHEN p.estado = 'failed' THEN 1 ELSE 0 END)::int AS fallidos,
-            SUM(CASE WHEN p.estado = 'route' THEN 1 ELSE 0 END)::int AS en_ruta,
-            SUM(CASE WHEN p.estado = 'pending' THEN 1 ELSE 0 END)::int AS pendientes,
-            COALESCE(SUM(CASE WHEN p.estado = 'delivered' THEN p.total ELSE 0 END), 0.00)::decimal AS total_sistema_entregado,
-            COALESCE(cd.total_recaudado, COALESCE(SUM(CASE WHEN p.estado = 'delivered' THEN p.total ELSE 0 END), 0.00))::decimal AS total_recaudado,
-            COALESCE(cd.diferencia, 0.00)::decimal AS diferencia,
-            cd.observaciones
-        FROM vendedores v
-        LEFT JOIN pedidos p ON p.vendedor_id = v.id AND p.fecha_creacion::date = ${startOfDay}::date
-        LEFT JOIN cierres_diarios cd ON cd.vendedor_id = v.id AND cd.fecha::date = ${startOfDay}::date
-        WHERE v.activo = TRUE
-        GROUP BY v.id, v.nombre, cd.total_recaudado, cd.diferencia, cd.observaciones;
-      `;
-      return results;
-    }
+    // Ejecutamos directamente la consulta nativa ajustando la fecha del pedido a la zona horaria de Bolivia (America/La_Paz)
+    const results: any[] = await this.prisma.$queryRaw`
+      SELECT 
+          ${startOfDay}::date AS fecha,
+          v.id AS vendedor_id,
+          v.nombre AS vendedor_nombre,
+          COUNT(p.id)::int AS total_pedidos,
+          SUM(CASE WHEN p.estado = 'delivered' THEN 1 ELSE 0 END)::int AS entregados,
+          SUM(CASE WHEN p.estado = 'failed' THEN 1 ELSE 0 END)::int AS fallidos,
+          SUM(CASE WHEN p.estado = 'route' THEN 1 ELSE 0 END)::int AS en_ruta,
+          SUM(CASE WHEN p.estado = 'pending' THEN 1 ELSE 0 END)::int AS pendientes,
+          COALESCE(SUM(CASE WHEN p.estado = 'delivered' THEN p.total ELSE 0 END), 0.00)::decimal AS total_sistema_entregado,
+          COALESCE(cd.total_recaudado, COALESCE(SUM(CASE WHEN p.estado = 'delivered' THEN p.total ELSE 0 END), 0.00))::decimal AS total_recaudado,
+          COALESCE(cd.diferencia, 0.00)::decimal AS diferencia,
+          cd.observaciones
+      FROM vendedores v
+      LEFT JOIN pedidos p ON p.vendedor_id = v.id AND (p.fecha_creacion AT TIME ZONE 'America/La_Paz')::date = ${startOfDay}::date
+      LEFT JOIN cierres_diarios cd ON cd.vendedor_id = v.id AND cd.fecha::date = ${startOfDay}::date
+      WHERE v.activo = TRUE
+      GROUP BY v.id, v.nombre, cd.total_recaudado, cd.diferencia, cd.observaciones;
+    `;
+    return results;
   }
 
   async getGeneralReportHistorico(): Promise<any[]> {
-    try {
-      const results: any[] = await this.prisma.$queryRaw`
-        SELECT * FROM v_reporte_general_historico;
-      `;
-      return results;
-    } catch {
-      // Si la vista no existe en Supabase, ejecutamos la consulta nativa equivalente
-      const results: any[] = await this.prisma.$queryRaw`
-        SELECT 
-            fecha::text AS fecha,
-            COUNT(DISTINCT vendedor_id)::int AS vendedores_activos,
-            SUM(total_pedidos)::int AS total_pedidos,
-            SUM(entregados)::int AS total_entregados,
-            SUM(fallidos)::int AS total_fallidos,
-            SUM(total_sistema)::decimal AS total_ventas_sistema,
-            SUM(total_recaudado)::decimal AS total_ventas_recaudado,
-            SUM(diferencia)::decimal AS total_diferencias,
-            ROUND((SUM(entregados)::decimal / NULLIF(SUM(total_pedidos), 0)) * 100, 2)::decimal AS porcentaje_efectividad,
-            'CERRADO' AS tipo_registro
-        FROM cierres_diarios
-        GROUP BY fecha
-        
-        UNION ALL
-        
-        SELECT 
-            CURRENT_DATE::text AS fecha,
-            COUNT(DISTINCT vendedor_id)::int AS vendedores_activos,
-            COUNT(id)::int AS total_pedidos,
-            SUM(CASE WHEN estado = 'delivered' THEN 1 ELSE 0 END)::int AS total_entregados,
-            SUM(CASE WHEN estado = 'failed' THEN 1 ELSE 0 END)::int AS total_fallidos,
-            COALESCE(SUM(CASE WHEN estado = 'delivered' THEN total ELSE 0 END), 0.00)::decimal AS total_ventas_sistema,
-            0.00 AS total_ventas_recaudado,
-            0.00 AS total_diferencias,
-            ROUND((SUM(CASE WHEN estado = 'delivered' THEN 1 ELSE 0 END)::decimal / NULLIF(COUNT(id), 0)) * 100, 2)::decimal AS porcentaje_efectividad,
-            'EN_CURSO' AS tipo_registro
-        FROM pedidos
-        WHERE fecha_creacion::date = CURRENT_DATE
-          AND vendedor_id IS NOT NULL
-        GROUP BY fecha
-        ORDER BY fecha DESC;
-      `;
-      return results;
-    }
+    // Ejecutamos directamente la consulta nativa ajustando las fechas a la zona horaria de Bolivia (America/La_Paz)
+    const results: any[] = await this.prisma.$queryRaw`
+      SELECT 
+          fecha::text AS fecha,
+          COUNT(DISTINCT vendedor_id)::int AS vendedores_activos,
+          SUM(total_pedidos)::int AS total_pedidos,
+          SUM(entregados)::int AS total_entregados,
+          SUM(fallidos)::int AS total_fallidos,
+          SUM(total_sistema)::decimal AS total_ventas_sistema,
+          SUM(total_recaudado)::decimal AS total_ventas_recaudado,
+          SUM(diferencia)::decimal AS total_diferencias,
+          ROUND((SUM(entregados)::decimal / NULLIF(SUM(total_pedidos), 0)) * 100, 2)::decimal AS porcentaje_efectividad,
+          'CERRADO' AS tipo_registro
+      FROM cierres_diarios
+      GROUP BY fecha
+      
+      UNION ALL
+      
+      SELECT 
+          (CURRENT_TIMESTAMP AT TIME ZONE 'America/La_Paz')::date::text AS fecha,
+          COUNT(DISTINCT vendedor_id)::int AS vendedores_activos,
+          COUNT(id)::int AS total_pedidos,
+          SUM(CASE WHEN estado = 'delivered' THEN 1 ELSE 0 END)::int AS total_entregados,
+          SUM(CASE WHEN estado = 'failed' THEN 1 ELSE 0 END)::int AS total_fallidos,
+          COALESCE(SUM(CASE WHEN estado = 'delivered' THEN total ELSE 0 END), 0.00)::decimal AS total_ventas_sistema,
+          0.00 AS total_ventas_recaudado,
+          0.00 AS total_diferencias,
+          ROUND((SUM(CASE WHEN estado = 'delivered' THEN 1 ELSE 0 END)::decimal / NULLIF(COUNT(id), 0)) * 100, 2)::decimal AS porcentaje_efectividad,
+          'EN_CURSO' AS tipo_registro
+      FROM pedidos
+      WHERE (fecha_creacion AT TIME ZONE 'America/La_Paz')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'America/La_Paz')::date
+        AND vendedor_id IS NOT NULL
+      GROUP BY fecha
+      ORDER BY fecha DESC;
+    `;
+    return results;
   }
 }
