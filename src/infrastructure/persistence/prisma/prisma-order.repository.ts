@@ -68,7 +68,13 @@ export class PrismaOrderRepository implements IOrderRepository {
     return order ? this.mapToOrder(order) : null;
   }
 
-  async findAll(filters?: { estado?: string; vendedor_id?: string; cliente_id?: string }): Promise<Order[]> {
+  async findAll(filters?: { 
+    estado?: string; 
+    vendedor_id?: string; 
+    cliente_id?: string;
+    fecha_inicio?: Date;
+    fecha_fin?: Date;
+  }): Promise<Order[]> {
     const where: any = {};
     if (filters?.estado) {
       where.estado = filters.estado;
@@ -78,6 +84,15 @@ export class PrismaOrderRepository implements IOrderRepository {
     }
     if (filters?.cliente_id) {
       where.cliente_id = filters.cliente_id;
+    }
+    if (filters?.fecha_inicio || filters?.fecha_fin) {
+      where.fecha_creacion = {};
+      if (filters.fecha_inicio) {
+        where.fecha_creacion.gte = filters.fecha_inicio;
+      }
+      if (filters.fecha_fin) {
+        where.fecha_creacion.lt = filters.fecha_fin;
+      }
     }
 
     const orders = await this.prisma.pedido.findMany({

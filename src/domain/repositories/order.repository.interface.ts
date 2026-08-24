@@ -2,7 +2,13 @@ import { Order, OrderDetail } from '../entities/order.entity';
 
 export interface IOrderRepository {
   findById(id: string): Promise<Order | null>;
-  findAll(filters?: { estado?: string; vendedor_id?: string; cliente_id?: string }): Promise<Order[]>;
+  findAll(filters?: { 
+    estado?: string; 
+    vendedor_id?: string; 
+    cliente_id?: string;
+    fecha_inicio?: Date;
+    fecha_fin?: Date;
+  }): Promise<Order[]>;
   create(order: {
     codigo: string;
     cliente_id: string;

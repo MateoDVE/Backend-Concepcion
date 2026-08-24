@@ -11,5 +11,11 @@
       "src": "/(.*)",
       "dest": "api/index.ts"
     }
+  ],
+  "crons": [
+    {
+      "path": "/closings-cron/auto-close",
+      "schedule": "50 3 * * *"
+    }
   ]
 }
