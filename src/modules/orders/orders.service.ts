@@ -3,6 +3,7 @@ import { ORDER_REPOSITORY_TOKEN, CLIENT_REPOSITORY_TOKEN, PRODUCT_REPOSITORY_TOK
 import type { IOrderRepository } from '../../domain/repositories/order.repository.interface';
 import type { IClientRepository } from '../../domain/repositories/client.repository.interface';
 import type { IProductRepository } from '../../domain/repositories/product.repository.interface';
+import type { Order } from '../../domain/entities/order.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
@@ -169,7 +170,13 @@ export class OrdersService {
       }
     }
 
-    return this.orderRepo.updateStatus(id, dto.estado, dataUpdate);
+    const updatedOrder = await this.orderRepo.updateStatus(id, dto.estado, dataUpdate);
+
+    if (order.estado !== 'failed' && dto.estado === 'failed') {
+      await this.rescheduleToNextDay(order);
+    }
+
+    return updatedOrder;
   }
 
   async update(id: string, dto: UpdateOrderDto) {
@@ -228,6 +235,29 @@ export class OrdersService {
     }
 
     return this.orderRepo.update(id, updateData);
+  }
+
+  async rescheduleToNextDay(order: Order): Promise<Order> {
+    const codigo = `ORD-${Math.floor(100000 + Math.random() * 900000)}`;
+
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const detallesProcesados = (order.detalles || []).map((d) => ({
+      producto_id: d.producto_id,
+      cantidad: d.cantidad,
+      precio_aplicado: d.precio_aplicado,
+    }));
+
+    return this.orderRepo.create({
+      codigo,
+      cliente_id: order.cliente_id,
+      vendedor_id: order.vendedor_id ?? null,
+      estado: 'pending',
+      total: order.total,
+      detalles: detallesProcesados,
+      fecha_creacion: tomorrow,
+    });
   }
 
   async delete(id: string) {

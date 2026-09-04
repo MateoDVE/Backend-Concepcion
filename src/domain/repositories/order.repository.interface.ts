@@ -21,6 +21,7 @@ export interface IOrderRepository {
       precio_aplicado: number;
     }>;
     fecha_entrega?: Date | null;
+    fecha_creacion?: Date;
   }): Promise<Order>;
   updateStatus(
     id: string,

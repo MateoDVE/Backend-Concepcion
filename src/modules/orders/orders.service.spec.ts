@@ -245,4 +245,80 @@ describe('OrdersService', () => {
       );
     });
   });
+
+  describe('updateStatus', () => {
+    it('should reschedule order to next day if state changes to failed', async () => {
+      const orderId = 'order-uuid';
+      const originalOrder = {
+        id: orderId,
+        codigo: 'ORD-123456',
+        cliente_id: 'client-uuid',
+        vendedor_id: 'vendor-uuid',
+        estado: 'pending',
+        total: 100,
+        detalles: [
+          { producto_id: 'prod-1', cantidad: 2, precio_aplicado: 50 },
+        ],
+      };
+
+      orderRepo.findById.mockResolvedValue(originalOrder as any);
+      orderRepo.updateStatus.mockResolvedValue({ ...originalOrder, estado: 'failed', motivo_falla: 'No habia nadie' } as any);
+      orderRepo.create.mockResolvedValue({ id: 'new-order-uuid' } as any);
+
+      const result = await service.updateStatus(orderId, {
+        estado: 'failed',
+        motivo_falla: 'No habia nadie',
+      });
+
+      expect(orderRepo.updateStatus).toHaveBeenCalledWith(
+        orderId,
+        'failed',
+        expect.objectContaining({ motivo_falla: 'No habia nadie' }),
+      );
+
+      expect(orderRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          cliente_id: 'client-uuid',
+          vendedor_id: 'vendor-uuid',
+          estado: 'pending',
+          total: 100,
+          detalles: [
+            { producto_id: 'prod-1', cantidad: 2, precio_aplicado: 50 },
+          ],
+          fecha_creacion: expect.any(Date),
+        }),
+      );
+
+      expect(result.estado).toBe('failed');
+    });
+
+    it('should not reschedule order if state was already failed', async () => {
+      const orderId = 'order-uuid';
+      const originalOrder = {
+        id: orderId,
+        codigo: 'ORD-123456',
+        cliente_id: 'client-uuid',
+        vendedor_id: 'vendor-uuid',
+        estado: 'failed',
+        total: 100,
+        detalles: [],
+      };
+
+      orderRepo.findById.mockResolvedValue(originalOrder as any);
+      orderRepo.updateStatus.mockResolvedValue({ ...originalOrder, motivo_falla: 'Nueva direccion' } as any);
+
+      await service.updateStatus(orderId, {
+        estado: 'failed',
+        motivo_falla: 'Nueva direccion',
+      });
+
+      expect(orderRepo.updateStatus).toHaveBeenCalledWith(
+        orderId,
+        'failed',
+        expect.objectContaining({ motivo_falla: 'Nueva direccion' }),
+      );
+
+      expect(orderRepo.create).not.toHaveBeenCalled();
+    });
+  });
 });
