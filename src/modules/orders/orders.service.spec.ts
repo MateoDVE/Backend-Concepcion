@@ -26,6 +26,7 @@ describe('OrdersService', () => {
       findLatestDeliveredPrice: jest.fn(),
       findClientOrderHistory: jest.fn(),
       delete: jest.fn(),
+      moveToNextDay: jest.fn(),
     };
 
     const mockClientRepo = {
@@ -247,7 +248,7 @@ describe('OrdersService', () => {
   });
 
   describe('updateStatus', () => {
-    it('should reschedule order to next day if state changes to failed', async () => {
+    it('should update status to failed with motivo_falla', async () => {
       const orderId = 'order-uuid';
       const originalOrder = {
         id: orderId,
@@ -263,7 +264,6 @@ describe('OrdersService', () => {
 
       orderRepo.findById.mockResolvedValue(originalOrder as any);
       orderRepo.updateStatus.mockResolvedValue({ ...originalOrder, estado: 'failed', motivo_falla: 'No habia nadie' } as any);
-      orderRepo.create.mockResolvedValue({ id: 'new-order-uuid' } as any);
 
       const result = await service.updateStatus(orderId, {
         estado: 'failed',
@@ -276,49 +276,30 @@ describe('OrdersService', () => {
         expect.objectContaining({ motivo_falla: 'No habia nadie' }),
       );
 
-      expect(orderRepo.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          cliente_id: 'client-uuid',
-          vendedor_id: 'vendor-uuid',
-          estado: 'pending',
-          total: 100,
-          detalles: [
-            { producto_id: 'prod-1', cantidad: 2, precio_aplicado: 50 },
-          ],
-          fecha_creacion: expect.any(Date),
-        }),
-      );
-
       expect(result.estado).toBe('failed');
     });
 
-    it('should not reschedule order if state was already failed', async () => {
-      const orderId = 'order-uuid';
-      const originalOrder = {
-        id: orderId,
-        codigo: 'ORD-123456',
-        cliente_id: 'client-uuid',
-        vendedor_id: 'vendor-uuid',
-        estado: 'failed',
-        total: 100,
-        detalles: [],
-      };
+    it('should move unfulfilled orders to next day', async () => {
+      const pendingOrders = [
+        { id: 'ord-1', codigo: 'ORD-001', estado: 'pending' },
+        { id: 'ord-2', codigo: 'ORD-002', estado: 'loaded' },
+        { id: 'ord-3', codigo: 'ORD-003', estado: 'route' },
+        { id: 'ord-4', codigo: 'ORD-004', estado: 'failed' },
+        { id: 'ord-5', codigo: 'ORD-005', estado: 'delivered' },
+      ];
 
-      orderRepo.findById.mockResolvedValue(originalOrder as any);
-      orderRepo.updateStatus.mockResolvedValue({ ...originalOrder, motivo_falla: 'Nueva direccion' } as any);
+      orderRepo.findAll.mockResolvedValue(pendingOrders as any);
+      orderRepo.moveToNextDay.mockResolvedValue(4);
 
-      await service.updateStatus(orderId, {
-        estado: 'failed',
-        motivo_falla: 'Nueva direccion',
-      });
+      const res = await service.moveUnfulfilledOrdersToNextDay();
 
-      expect(orderRepo.updateStatus).toHaveBeenCalledWith(
-        orderId,
-        'failed',
-        expect.objectContaining({ motivo_falla: 'Nueva direccion' }),
+      expect(res.success).toBe(true);
+      expect(res.movedCount).toBe(4);
+      expect(res.orderCodes).toEqual(['ORD-001', 'ORD-002', 'ORD-003', 'ORD-004']);
+      expect(orderRepo.moveToNextDay).toHaveBeenCalledWith(
+        ['ord-1', 'ord-2', 'ord-3', 'ord-4'],
+        expect.any(Date)
       );
-
-      expect(orderRepo.create).not.toHaveBeenCalled();
     });
   });
 });

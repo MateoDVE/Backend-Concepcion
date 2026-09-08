@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PersistenceModule } from './infrastructure/persistence/persistence.module';
@@ -16,6 +17,9 @@ import { ClosingsModule } from './modules/closings/closings.module';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+
+    // Tareas programadas automáticas (Cron Jobs)
+    ScheduleModule.forRoot(),
     
     // Capa de persistencia (Base de Datos / Prisma)
     PersistenceModule,

@@ -1,4 +1,5 @@
-import { Injectable, Inject, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, Inject, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
 import { CLOSING_REPOSITORY_TOKEN, USER_REPOSITORY_TOKEN, ORDER_REPOSITORY_TOKEN } from '../../domain/repositories/tokens';
 import type { IClosingRepository } from '../../domain/repositories/closing.repository.interface';
 import type { IUserRepository } from '../../domain/repositories/user.repository.interface';
@@ -7,6 +8,8 @@ import { CreateClosingDto } from './dto/create-closing.dto';
 
 @Injectable()
 export class ClosingsService {
+  private readonly logger = new Logger(ClosingsService.name);
+
   constructor(
     @Inject(CLOSING_REPOSITORY_TOKEN)
     private readonly closingRepo: IClosingRepository,
@@ -145,5 +148,23 @@ export class ClosingsService {
       cierres_creados: closuresCreated,
       pedidos_movidos_al_dia_siguiente: pedidosMovidos,
     };
+  }
+
+  /**
+   * Cierre de jornada programado automáticamente a las 23:55 (hora de Bolivia America/La_Paz).
+   * Genera los cierres diarios de los vendedores y traslada todos los pedidos no completados
+   * (pendientes, cargados, en ruta, fallados) al día siguiente con estado 'pending'.
+   */
+  @Cron('55 23 * * *', { timeZone: 'America/La_Paz' })
+  async handleScheduledAutoClose() {
+    this.logger.log('Iniciando cierre automático y traslado de pedidos no completados a las 23:55 (America/La_Paz)...');
+    try {
+      const result = await this.autoCloseToday();
+      this.logger.log(
+        `Cierre automático completado exitosamente: ${result.cierres_creados.length} cierres generados, ${result.pedidos_movidos_al_dia_siguiente} pedidos trasladados al día siguiente.`
+      );
+    } catch (error) {
+      this.logger.error('Error durante el cierre automático de jornada a las 23:55:', error);
+    }
   }
 }
