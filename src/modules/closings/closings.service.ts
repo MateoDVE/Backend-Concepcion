@@ -125,10 +125,25 @@ export class ClosingsService {
       });
     }
 
+    // 5. Mover pedidos no completados (cargados, pendientes, fallados, ruta) al día siguiente
+    const unfulfilled = orders.filter((o) =>
+      ['pending', 'loaded', 'failed', 'route'].includes(o.estado)
+    );
+    let pedidosMovidos = 0;
+    if (unfulfilled.length > 0) {
+      const baseDate = new Date(`${dateStr}T12:00:00.000Z`);
+      const nextDate = new Date(baseDate.getTime() + 24 * 60 * 60 * 1000);
+      pedidosMovidos = await this.orderRepo.moveToNextDay(
+        unfulfilled.map((o) => o.id),
+        nextDate
+      );
+    }
+
     return {
       success: true,
       fecha: dateStr,
       cierres_creados: closuresCreated,
+      pedidos_movidos_al_dia_siguiente: pedidosMovidos,
     };
   }
 }

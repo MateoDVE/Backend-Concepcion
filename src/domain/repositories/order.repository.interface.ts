@@ -44,5 +44,6 @@ export interface IOrderRepository {
   ): Promise<Order>;
   findLatestDeliveredPrice(clientId: string, productId: string): Promise<number | null>;
   findClientOrderHistory(clientId: string): Promise<Order[]>;
+  moveToNextDay(orderIds: string[], nextDate: Date): Promise<number>;
   delete(id: string): Promise<boolean>;
 }

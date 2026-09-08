@@ -171,11 +171,6 @@ export class OrdersService {
     }
 
     const updatedOrder = await this.orderRepo.updateStatus(id, dto.estado, dataUpdate);
-
-    if (order.estado !== 'failed' && dto.estado === 'failed') {
-      await this.rescheduleToNextDay(order);
-    }
-
     return updatedOrder;
   }
 
@@ -240,8 +235,13 @@ export class OrdersService {
   async rescheduleToNextDay(order: Order): Promise<Order> {
     const codigo = `ORD-${Math.floor(100000 + Math.random() * 900000)}`;
 
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const nowBolivia = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/La_Paz' }));
+    const tomorrowBolivia = new Date(nowBolivia);
+    tomorrowBolivia.setDate(tomorrowBolivia.getDate() + 1);
+    const year = tomorrowBolivia.getFullYear();
+    const month = String(tomorrowBolivia.getMonth() + 1).padStart(2, '0');
+    const day = String(tomorrowBolivia.getDate()).padStart(2, '0');
+    const tomorrow = new Date(`${year}-${month}-${day}T12:00:00.000Z`);
 
     const detallesProcesados = (order.detalles || []).map((d) => ({
       producto_id: d.producto_id,
@@ -258,6 +258,57 @@ export class OrdersService {
       detalles: detallesProcesados,
       fecha_creacion: tomorrow,
     });
+  }
+
+  async moveUnfulfilledOrdersToNextDay(fechaReferencia?: string) {
+    // 1. Obtener fecha de referencia en zona horaria America/La_Paz
+    let dateStr: string;
+    if (fechaReferencia) {
+      dateStr = fechaReferencia.split('T')[0];
+    } else {
+      const nowBolivia = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/La_Paz' }));
+      const year = nowBolivia.getFullYear();
+      const month = String(nowBolivia.getMonth() + 1).padStart(2, '0');
+      const day = String(nowBolivia.getDate()).padStart(2, '0');
+      dateStr = `${year}-${month}-${day}`;
+    }
+
+    // El día local de Bolivia empieza a las 04:00 UTC y termina a las 04:00 UTC del día siguiente (UTC-4)
+    const startOfTodayUTC = new Date(`${dateStr}T04:00:00.000Z`);
+    const endOfTodayUTC = new Date(startOfTodayUTC.getTime() + 24 * 60 * 60 * 1000);
+
+    // Calcular la fecha destino: el día siguiente a las 08:00 AM hora Bolivia (12:00 UTC)
+    const baseDate = new Date(`${dateStr}T12:00:00.000Z`);
+    const nextDate = new Date(baseDate.getTime() + 24 * 60 * 60 * 1000);
+
+    // 2. Buscar pedidos de la jornada que no fueron entregados (cargados, pendientes, fallados, ruta)
+    const orders = await this.orderRepo.findAll({
+      fecha_inicio: startOfTodayUTC,
+      fecha_fin: endOfTodayUTC,
+    });
+
+    const unfulfilled = orders.filter((o) =>
+      ['pending', 'loaded', 'failed', 'route'].includes(o.estado)
+    );
+
+    if (unfulfilled.length === 0) {
+      return {
+        success: true,
+        movedCount: 0,
+        orderCodes: [],
+        targetDate: nextDate.toISOString().split('T')[0],
+      };
+    }
+
+    const orderIds = unfulfilled.map((o) => o.id);
+    const movedCount = await this.orderRepo.moveToNextDay(orderIds, nextDate);
+
+    return {
+      success: true,
+      movedCount,
+      orderCodes: unfulfilled.map((o) => o.codigo),
+      targetDate: nextDate.toISOString().split('T')[0],
+    };
   }
 
   async delete(id: string) {

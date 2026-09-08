@@ -287,6 +287,24 @@ export class PrismaOrderRepository implements IOrderRepository {
     return orders.map((o) => this.mapToOrder(o));
   }
 
+  async moveToNextDay(orderIds: string[], nextDate: Date): Promise<number> {
+    if (!orderIds || orderIds.length === 0) return 0;
+
+    const result = await this.prisma.pedido.updateMany({
+      where: {
+        id: { in: orderIds },
+      },
+      data: {
+        fecha_creacion: nextDate,
+        estado: 'pending',
+        motivo_falla: null,
+        fecha_entrega: null,
+      },
+    });
+
+    return result.count;
+  }
+
   async delete(id: string): Promise<boolean> {
     try {
       await this.prisma.pedido.delete({ where: { id } });

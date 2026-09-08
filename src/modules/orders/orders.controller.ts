@@ -44,6 +44,18 @@ export class OrdersController {
     return this.ordersService.create(dto);
   }
 
+  @Post('move-to-next-day')
+  @Roles('admin', 'vendedor')
+  async moveToNextDay(@Body() body?: { fecha?: string }) {
+    return this.ordersService.moveUnfulfilledOrdersToNextDay(body?.fecha);
+  }
+
+  @Post('reschedule-unfulfilled')
+  @Roles('admin', 'vendedor')
+  async rescheduleUnfulfilled(@Body() body?: { fecha?: string }) {
+    return this.ordersService.moveUnfulfilledOrdersToNextDay(body?.fecha);
+  }
+
   @Put(':id')
   @Roles('admin', 'vendedor')
   async update(@Param('id') id: string, @Body() dto: UpdateOrderDto) {

@@ -32,7 +32,7 @@ export class ClientsController {
   }
 
   @Put(':id')
-  @Roles('admin')
+  @Roles('admin', 'vendedor')
   async update(
     @Param('id') id: string,
     @Body() dto: UpdateClientDto,
