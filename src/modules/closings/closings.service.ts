@@ -61,13 +61,23 @@ export class ClosingsService {
     return this.closingRepo.getGeneralReportHistorico();
   }
 
-  async autoCloseToday() {
-    // 1. Obtener la fecha actual en America/La_Paz
-    const todayBolivia = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/La_Paz' }));
-    const year = todayBolivia.getFullYear();
-    const month = String(todayBolivia.getMonth() + 1).padStart(2, '0');
-    const day = String(todayBolivia.getDate()).padStart(2, '0');
-    const dateStr = `${year}-${month}-${day}`;
+  async autoCloseToday(fechaTarget?: string) {
+    // 1. Obtener la fecha de la jornada en America/La_Paz
+    let dateStr: string;
+    if (fechaTarget) {
+      dateStr = fechaTarget.split('T')[0];
+    } else {
+      const todayBolivia = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/La_Paz' }));
+      // Si el cron se ejecuta con un leve retraso después de medianoche (00:00 a 03:59 AM hora Bolivia),
+      // la jornada comercial a cerrar corresponde al día que acaba de terminar (ayer a las 23:50).
+      if (todayBolivia.getHours() < 4) {
+        todayBolivia.setDate(todayBolivia.getDate() - 1);
+      }
+      const year = todayBolivia.getFullYear();
+      const month = String(todayBolivia.getMonth() + 1).padStart(2, '0');
+      const day = String(todayBolivia.getDate()).padStart(2, '0');
+      dateStr = `${year}-${month}-${day}`;
+    }
     const fechaCierre = new Date(`${dateStr}T00:00:00.000Z`);
 
     // El día local de Bolivia empieza a las 04:00 UTC y termina a las 04:00 UTC del día siguiente (UTC-4)

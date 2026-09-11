@@ -15,6 +15,7 @@ export interface IOrderRepository {
     vendedor_id: string | null;
     estado: Order['estado'];
     total: number;
+    metodo_pago?: 'efectivo' | 'qr' | null;
     detalles: Array<{
       producto_id: string;
       cantidad: number;
@@ -26,7 +27,7 @@ export interface IOrderRepository {
   updateStatus(
     id: string,
     estado: Order['estado'],
-    extra?: { motivo_falla?: string | null; fecha_entrega?: Date | null }
+    extra?: { motivo_falla?: string | null; fecha_entrega?: Date | null; metodo_pago?: 'efectivo' | 'qr' | null }
   ): Promise<Order>;
   update(
     id: string,
@@ -34,6 +35,7 @@ export interface IOrderRepository {
       cliente_id?: string;
       vendedor_id?: string | null;
       estado?: Order['estado'];
+      metodo_pago?: 'efectivo' | 'qr' | null;
       total?: number;
       detalles?: Array<{
         producto_id: string;

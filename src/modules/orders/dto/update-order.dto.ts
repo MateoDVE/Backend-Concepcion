@@ -1,4 +1,4 @@
-import { IsUUID, IsOptional, IsString, IsArray, ValidateNested } from 'class-validator';
+import { IsUUID, IsOptional, IsString, IsArray, ValidateNested, IsIn } from 'class-validator';
 import { Type } from 'class-transformer';
 import { OrderDetailDto } from './create-order.dto';
 
@@ -14,6 +14,11 @@ export class UpdateOrderDto {
   @IsString()
   @IsOptional()
   estado?: 'pending' | 'loaded' | 'route' | 'delivered' | 'failed';
+
+  @IsString()
+  @IsOptional()
+  @IsIn(['efectivo', 'qr'])
+  metodo_pago?: 'efectivo' | 'qr';
 
   @IsArray()
   @IsOptional()

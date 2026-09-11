@@ -18,6 +18,7 @@ export interface Order {
   estado: 'pending' | 'loaded' | 'route' | 'delivered' | 'failed';
   total: number;
   motivo_falla: string | null;
+  metodo_pago?: 'efectivo' | 'qr' | null;
   fecha_creacion: Date;
   fecha_entrega: Date | null;
   updated_at: Date;

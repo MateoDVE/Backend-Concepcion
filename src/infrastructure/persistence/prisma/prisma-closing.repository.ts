@@ -57,6 +57,7 @@ export class PrismaClosingRepository implements IClosingRepository {
 
     const closing = await this.prisma.cierreDiario.findUnique({
       where: {
+
         fecha_vendedor_id: {
           fecha: startOfDay,
           vendedor_id: vendedorId,
@@ -70,7 +71,6 @@ export class PrismaClosingRepository implements IClosingRepository {
     const startOfDay = new Date(fecha);
     startOfDay.setHours(0, 0, 0, 0);
 
-    // Ejecutamos directamente la consulta nativa ajustando la fecha del pedido a la zona horaria de Bolivia (America/La_Paz)
     const results: any[] = await this.prisma.$queryRaw`
       SELECT 
           ${startOfDay}::date AS fecha,
@@ -81,6 +81,8 @@ export class PrismaClosingRepository implements IClosingRepository {
           SUM(CASE WHEN p.estado = 'failed' THEN 1 ELSE 0 END)::int AS fallidos,
           SUM(CASE WHEN p.estado = 'route' THEN 1 ELSE 0 END)::int AS en_ruta,
           SUM(CASE WHEN p.estado = 'pending' THEN 1 ELSE 0 END)::int AS pendientes,
+          COALESCE(SUM(CASE WHEN p.estado = 'delivered' AND (p.metodo_pago = 'efectivo' OR p.metodo_pago IS NULL) THEN p.total ELSE 0 END), 0.00)::decimal AS total_efectivo,
+          COALESCE(SUM(CASE WHEN p.estado = 'delivered' AND p.metodo_pago = 'qr' THEN p.total ELSE 0 END), 0.00)::decimal AS total_qr,
           COALESCE(SUM(CASE WHEN p.estado = 'delivered' THEN p.total ELSE 0 END), 0.00)::decimal AS total_sistema_entregado,
           COALESCE(cd.total_recaudado, COALESCE(SUM(CASE WHEN p.estado = 'delivered' THEN p.total ELSE 0 END), 0.00))::decimal AS total_recaudado,
           COALESCE(cd.diferencia, 0.00)::decimal AS diferencia,
@@ -91,11 +93,11 @@ export class PrismaClosingRepository implements IClosingRepository {
       WHERE v.activo = TRUE
       GROUP BY v.id, v.nombre, cd.total_recaudado, cd.diferencia, cd.observaciones;
     `;
+
     return results;
   }
 
   async getGeneralReportHistorico(): Promise<any[]> {
-    // Ejecutamos directamente la consulta nativa ajustando las fechas a la zona horaria de Bolivia (America/La_Paz)
     const results: any[] = await this.prisma.$queryRaw`
       SELECT 
           fecha::text AS fecha,
@@ -130,6 +132,7 @@ export class PrismaClosingRepository implements IClosingRepository {
       GROUP BY (CURRENT_TIMESTAMP AT TIME ZONE 'America/La_Paz')::date::text
       ORDER BY fecha DESC;
     `;
+
     return results;
   }
 }

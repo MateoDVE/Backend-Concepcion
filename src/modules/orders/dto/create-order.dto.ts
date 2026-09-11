@@ -1,4 +1,4 @@
-import { IsUUID, IsNotEmpty, IsOptional, IsString, IsArray, ValidateNested, IsInt, IsNumber, Min, ArrayMinSize } from 'class-validator';
+import { IsUUID, IsNotEmpty, IsOptional, IsString, IsArray, ValidateNested, IsInt, IsNumber, Min, ArrayMinSize, IsIn } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class OrderDetailDto {
@@ -29,6 +29,11 @@ export class CreateOrderDto {
   @IsString()
   @IsOptional()
   estado?: 'pending' | 'loaded' | 'route' | 'delivered' | 'failed';
+
+  @IsString()
+  @IsOptional()
+  @IsIn(['efectivo', 'qr'])
+  metodo_pago?: 'efectivo' | 'qr';
 
   @IsArray()
   @ArrayMinSize(1)

@@ -16,6 +16,7 @@ export class PrismaOrderRepository implements IOrderRepository {
       estado: dbOrder.estado as Order['estado'],
       total: Number(dbOrder.total),
       motivo_falla: dbOrder.motivo_falla,
+      metodo_pago: dbOrder.metodo_pago,
       fecha_creacion: dbOrder.fecha_creacion ?? new Date(),
       fecha_entrega: dbOrder.fecha_entrega,
       updated_at: dbOrder.updated_at ?? new Date(),
@@ -118,6 +119,7 @@ export class PrismaOrderRepository implements IOrderRepository {
     vendedor_id: string | null;
     estado: Order['estado'];
     total: number;
+    metodo_pago?: 'efectivo' | 'qr' | null;
     detalles: Array<{
       producto_id: string;
       cantidad: number;
@@ -133,6 +135,7 @@ export class PrismaOrderRepository implements IOrderRepository {
         vendedor_id: order.vendedor_id,
         estado: order.estado,
         total: order.total,
+        metodo_pago: order.metodo_pago,
         fecha_entrega: order.fecha_entrega,
         fecha_creacion: order.fecha_creacion,
         detalles: {
@@ -160,7 +163,7 @@ export class PrismaOrderRepository implements IOrderRepository {
   async updateStatus(
     id: string,
     estado: Order['estado'],
-    extra?: { motivo_falla?: string; fecha_entrega?: Date | null }
+    extra?: { motivo_falla?: string | null; fecha_entrega?: Date | null; metodo_pago?: 'efectivo' | 'qr' | null }
   ): Promise<Order> {
     const data: any = { estado };
     if (extra?.motivo_falla !== undefined) {
@@ -168,6 +171,9 @@ export class PrismaOrderRepository implements IOrderRepository {
     }
     if (extra?.fecha_entrega !== undefined) {
       data.fecha_entrega = extra.fecha_entrega;
+    }
+    if (extra?.metodo_pago !== undefined) {
+      data.metodo_pago = extra.metodo_pago;
     }
 
     const updated = await this.prisma.pedido.update({
@@ -193,6 +199,7 @@ export class PrismaOrderRepository implements IOrderRepository {
       cliente_id?: string;
       vendedor_id?: string | null;
       estado?: Order['estado'];
+      metodo_pago?: 'efectivo' | 'qr' | null;
       total?: number;
       detalles?: Array<{
         producto_id: string;
@@ -206,6 +213,7 @@ export class PrismaOrderRepository implements IOrderRepository {
       if (order.cliente_id !== undefined) data.cliente_id = order.cliente_id;
       if (order.vendedor_id !== undefined) data.vendedor_id = order.vendedor_id;
       if (order.estado !== undefined) data.estado = order.estado;
+      if (order.metodo_pago !== undefined) data.metodo_pago = order.metodo_pago;
       if (order.total !== undefined) data.total = order.total;
 
       await tx.pedido.update({

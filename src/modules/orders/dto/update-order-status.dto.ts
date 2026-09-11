@@ -9,4 +9,9 @@ export class UpdateOrderStatusDto {
   @IsString()
   @IsOptional()
   motivo_falla?: string;
+
+  @IsString()
+  @IsOptional()
+  @IsIn(['efectivo', 'qr'])
+  metodo_pago?: 'efectivo' | 'qr';
 }
