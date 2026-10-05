@@ -53,8 +53,13 @@ export class ClosingsService {
   }
 
   async getDailyReportOperativo(fechaStr?: string) {
-    const fecha = fechaStr ? new Date(fechaStr) : new Date();
-    return this.closingRepo.getDailyReportOperativo(fecha);
+    let targetDateStr: string;
+    if (fechaStr) {
+      targetDateStr = fechaStr.split('T')[0];
+    } else {
+      targetDateStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/La_Paz' });
+    }
+    return this.closingRepo.getDailyReportOperativo(targetDateStr);
   }
 
   async getGeneralReportHistorico() {

@@ -67,13 +67,19 @@ export class PrismaClosingRepository implements IClosingRepository {
     return closing ? this.mapToClosing(closing) : null;
   }
 
-  async getDailyReportOperativo(fecha: Date): Promise<any[]> {
-    const startOfDay = new Date(fecha);
-    startOfDay.setHours(0, 0, 0, 0);
+  async getDailyReportOperativo(fecha: Date | string): Promise<any[]> {
+    let targetDateStr: string;
+    if (typeof fecha === 'string') {
+      targetDateStr = fecha.split('T')[0];
+    } else if (fecha instanceof Date) {
+      targetDateStr = fecha.toLocaleDateString('en-CA', { timeZone: 'America/La_Paz' });
+    } else {
+      targetDateStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/La_Paz' });
+    }
 
     const results: any[] = await this.prisma.$queryRaw`
       SELECT 
-          ${startOfDay}::date AS fecha,
+          ${targetDateStr}::date AS fecha,
           v.id AS vendedor_id,
           v.nombre AS vendedor_nombre,
           COUNT(p.id)::int AS total_pedidos,
@@ -88,8 +94,8 @@ export class PrismaClosingRepository implements IClosingRepository {
           COALESCE(cd.diferencia, 0.00)::decimal AS diferencia,
           cd.observaciones
       FROM vendedores v
-      LEFT JOIN pedidos p ON p.vendedor_id = v.id AND (p.fecha_creacion AT TIME ZONE 'America/La_Paz')::date = ${startOfDay}::date
-      LEFT JOIN cierres_diarios cd ON cd.vendedor_id = v.id AND cd.fecha::date = ${startOfDay}::date
+      LEFT JOIN pedidos p ON p.vendedor_id = v.id AND (p.fecha_creacion AT TIME ZONE 'America/La_Paz')::date = ${targetDateStr}::date
+      LEFT JOIN cierres_diarios cd ON cd.vendedor_id = v.id AND cd.fecha::date = ${targetDateStr}::date
       WHERE v.activo = TRUE
       GROUP BY v.id, v.nombre, cd.total_recaudado, cd.diferencia, cd.observaciones;
     `;

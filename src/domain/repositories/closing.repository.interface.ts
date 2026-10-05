@@ -13,6 +13,6 @@ export interface IClosingRepository {
     observaciones: string | null;
   }): Promise<DailyClosing>;
   findClosingByDateAndVendor(fecha: Date, vendedorId: string): Promise<DailyClosing | null>;
-  getDailyReportOperativo(fecha: Date): Promise<any[]>;
+  getDailyReportOperativo(fecha: Date | string): Promise<any[]>;
   getGeneralReportHistorico(): Promise<any[]>;
 }
