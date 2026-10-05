@@ -115,9 +115,14 @@ export class ClosingsService {
       const entregados = vendorOrders.filter(o => o.estado === 'delivered').length;
       const fallidos = vendorOrders.filter(o => o.estado === 'failed').length;
       
-      const total_sistema = vendorOrders.reduce((sum, o) => sum + o.total, 0);
-      const total_recaudado = vendorOrders.filter(o => o.estado === 'delivered').reduce((sum, o) => sum + o.total, 0);
-      const diferencia = Number((total_recaudado - total_sistema).toFixed(2));
+      const total_sistema = Number(
+        vendorOrders
+          .filter((o) => o.estado === 'delivered')
+          .reduce((sum, o) => sum + o.total, 0)
+          .toFixed(2)
+      );
+      const total_recaudado = total_sistema;
+      const diferencia = 0.0;
 
       const created = await this.closingRepo.createClosing({
         fecha: fechaCierre,
