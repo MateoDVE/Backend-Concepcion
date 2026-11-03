@@ -15,6 +15,8 @@ export interface Order {
   codigo: string;
   cliente_id: string;
   vendedor_id: string | null;
+  descripcion?: string | null;
+  orden_ruta?: number | null;
   estado: 'pending' | 'loaded' | 'route' | 'delivered' | 'failed';
   total: number;
   motivo_falla: string | null;

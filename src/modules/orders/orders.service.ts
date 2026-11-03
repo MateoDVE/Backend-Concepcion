@@ -7,9 +7,15 @@ import type { Order } from '../../domain/entities/order.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
+import { ReorderRouteDto } from './dto/reorder-route.dto';
 
 @Injectable()
 export class OrdersService {
+  async reorderRoute(dto: ReorderRouteDto) {
+    await this.orderRepo.reorderRoute(dto.vendedor_id, dto.fecha, dto.order_ids, dto.previous_order_ids);
+    return { success: true };
+  }
+
   constructor(
     @Inject(ORDER_REPOSITORY_TOKEN)
     private readonly orderRepo: IOrderRepository,
@@ -19,8 +25,49 @@ export class OrdersService {
     private readonly productRepo: IProductRepository,
   ) {}
 
-  async findAll(filters?: { estado?: string; vendedor_id?: string; cliente_id?: string }) {
-    return this.orderRepo.findAll(filters);
+  async findAll(filters?: {
+    estado?: string;
+    vendedor_id?: string;
+    cliente_id?: string;
+    fecha?: string;
+    fecha_inicio?: string | Date;
+    fecha_fin?: string | Date;
+  }) {
+    if (!filters) {
+      return this.orderRepo.findAll();
+    }
+
+    const repoFilters: {
+      estado?: string;
+      vendedor_id?: string;
+      cliente_id?: string;
+      fecha_inicio?: Date;
+      fecha_fin?: Date;
+    } = {};
+
+    if (filters.estado) repoFilters.estado = filters.estado;
+    if (filters.vendedor_id) repoFilters.vendedor_id = filters.vendedor_id;
+    if (filters.cliente_id) repoFilters.cliente_id = filters.cliente_id;
+
+    if (filters.fecha) {
+      const dateStr = filters.fecha.split('T')[0];
+      const start = new Date(`${dateStr}T00:00:00-04:00`);
+      if (!isNaN(start.getTime())) {
+        repoFilters.fecha_inicio = start;
+        repoFilters.fecha_fin = new Date(start.getTime() + 86400000);
+      }
+    } else {
+      if (filters.fecha_inicio) {
+        const start = filters.fecha_inicio instanceof Date ? filters.fecha_inicio : new Date(filters.fecha_inicio);
+        if (!isNaN(start.getTime())) repoFilters.fecha_inicio = start;
+      }
+      if (filters.fecha_fin) {
+        const end = filters.fecha_fin instanceof Date ? filters.fecha_fin : new Date(filters.fecha_fin);
+        if (!isNaN(end.getTime())) repoFilters.fecha_fin = end;
+      }
+    }
+
+    return this.orderRepo.findAll(repoFilters);
   }
 
   async findById(id: string) {
@@ -101,6 +148,7 @@ export class OrdersService {
 
     const createdOrder = await this.orderRepo.create({
       codigo,
+      descripcion: dto.descripcion?.trim() || null,
       cliente_id: dto.cliente_id,
       vendedor_id: dto.vendedor_id ?? null,
       estado: dto.estado ?? 'pending',
@@ -182,6 +230,9 @@ export class OrdersService {
     const order = await this.findById(id);
 
     const updateData: any = {};
+    if (dto.descripcion !== undefined) {
+      updateData.descripcion = dto.descripcion?.trim() || null;
+    }
 
     if (dto.cliente_id !== undefined) {
       const client = await this.clientRepo.findById(dto.cliente_id);
@@ -259,6 +310,7 @@ export class OrdersService {
 
     return this.orderRepo.create({
       codigo,
+      descripcion: order.descripcion ?? null,
       cliente_id: order.cliente_id,
       vendedor_id: order.vendedor_id ?? null,
       estado: 'pending',

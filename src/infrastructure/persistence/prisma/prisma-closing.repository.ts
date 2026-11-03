@@ -105,6 +105,14 @@ export class PrismaClosingRepository implements IClosingRepository {
 
   async getGeneralReportHistorico(): Promise<any[]> {
     const results: any[] = await this.prisma.$queryRaw`
+      WITH pedidos_actuales_mes AS (
+        SELECT to_char(fecha_creacion AT TIME ZONE 'America/La_Paz', 'YYYY-MM') AS mes,
+          COUNT(*)::int AS pedidos_actuales_mes,
+          COUNT(*) FILTER (WHERE estado = 'delivered')::int AS entregados_actuales_mes,
+          COUNT(*) FILTER (WHERE estado = 'failed')::int AS fallidos_actuales_mes
+        FROM pedidos
+        GROUP BY 1
+      ), historial AS (
       SELECT 
           fecha::text AS fecha,
           COUNT(DISTINCT vendedor_id)::int AS vendedores_activos,
@@ -136,7 +144,14 @@ export class PrismaClosingRepository implements IClosingRepository {
       WHERE (fecha_creacion AT TIME ZONE 'America/La_Paz')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'America/La_Paz')::date
         AND vendedor_id IS NOT NULL
       GROUP BY (CURRENT_TIMESTAMP AT TIME ZONE 'America/La_Paz')::date::text
-      ORDER BY fecha DESC;
+      )
+      SELECT h.*,
+        COALESCE(p.pedidos_actuales_mes, 0)::int AS pedidos_actuales_mes,
+        COALESCE(p.entregados_actuales_mes, 0)::int AS entregados_actuales_mes,
+        COALESCE(p.fallidos_actuales_mes, 0)::int AS fallidos_actuales_mes
+      FROM historial h
+      LEFT JOIN pedidos_actuales_mes p ON p.mes = substring(h.fecha, 1, 7)
+      ORDER BY h.fecha DESC;
     `;
 
     return results;

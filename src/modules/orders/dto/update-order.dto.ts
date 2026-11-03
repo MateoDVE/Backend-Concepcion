@@ -1,8 +1,13 @@
-import { IsUUID, IsOptional, IsString, IsArray, ValidateNested, IsIn } from 'class-validator';
+import { MaxLength, IsUUID, IsOptional, IsString, IsArray, ValidateNested, IsIn } from 'class-validator';
 import { Type } from 'class-transformer';
 import { OrderDetailDto } from './create-order.dto';
 
 export class UpdateOrderDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  descripcion?: string | null;
+
   @IsUUID()
   @IsOptional()
   cliente_id?: string;

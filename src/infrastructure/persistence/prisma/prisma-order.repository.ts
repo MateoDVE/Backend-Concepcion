@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ConflictException, BadRequestException } from '@nestjs/common';
 import { IOrderRepository } from '../../../domain/repositories/order.repository.interface';
 import { Order, OrderDetail } from '../../../domain/entities/order.entity';
 import { PrismaService } from './prisma.service';
@@ -7,12 +7,47 @@ import { PrismaService } from './prisma.service';
 export class PrismaOrderRepository implements IOrderRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  async reorderRoute(vendorId: string, date: string, orderIds: string[], previousOrderIds: string[]): Promise<void> {
+    const start = new Date(`${date}T00:00:00-04:00`);
+    const end = new Date(start.getTime() + 86400000);
+    try {
+      await this.prisma.$transaction(async tx => {
+        const orders = await tx.pedido.findMany({
+          where: { vendedor_id: vendorId, fecha_creacion: { gte: start, lt: end }, estado: { in: ['pending', 'loaded', 'route'] } },
+          orderBy: [{ orden_ruta: { sort: 'asc', nulls: 'last' } }, { fecha_creacion: 'asc' }, { id: 'asc' }],
+          select: { id: true, orden_ruta: true },
+        });
+        const ids = orders.map(o => o.id);
+        if (ids.length !== previousOrderIds.length || ids.some((id, i) => id !== previousOrderIds[i])) {
+          throw new ConflictException('La ruta cambió. Actualiza los pedidos e intenta nuevamente.');
+        }
+        const requested = new Set(orderIds);
+        if (requested.size !== orderIds.length || ids.length !== orderIds.length || ids.some(id => !requested.has(id))) {
+          throw new BadRequestException('Incluye todos los pedidos pendientes de esta ruta, sin duplicados.');
+        }
+        const positions = new Map(orders.map(order => [order.id, order.orden_ruta]));
+        for (const [index, id] of orderIds.entries()) {
+          if (positions.get(id) !== index + 1) {
+            await tx.pedido.update({ where: { id }, data: { orden_ruta: index + 1 } });
+          }
+        }
+      }, { isolationLevel: 'Serializable' });
+    } catch (error) {
+      if ((error as { code?: string }).code === 'P2034') {
+        throw new ConflictException('La ruta cambió. Actualiza los pedidos e intenta nuevamente.');
+      }
+      throw error;
+    }
+  }
+
   private mapToOrder(dbOrder: any): Order {
     return {
       id: dbOrder.id,
       codigo: dbOrder.codigo,
+      descripcion: dbOrder.descripcion ?? null,
       cliente_id: dbOrder.cliente_id,
       vendedor_id: dbOrder.vendedor_id,
+      orden_ruta: dbOrder.orden_ruta ?? null,
       estado: dbOrder.estado as Order['estado'],
       total: Number(dbOrder.total),
       motivo_falla: dbOrder.motivo_falla,
@@ -119,6 +154,7 @@ export class PrismaOrderRepository implements IOrderRepository {
     vendedor_id: string | null;
     estado: Order['estado'];
     total: number;
+    descripcion?: string | null;
     metodo_pago?: 'efectivo' | 'qr' | null;
     detalles: Array<{
       producto_id: string;
@@ -131,6 +167,7 @@ export class PrismaOrderRepository implements IOrderRepository {
     const created = await this.prisma.pedido.create({
       data: {
         codigo: order.codigo,
+        descripcion: order.descripcion,
         cliente_id: order.cliente_id,
         vendedor_id: order.vendedor_id,
         estado: order.estado,
@@ -199,6 +236,7 @@ export class PrismaOrderRepository implements IOrderRepository {
       cliente_id?: string;
       vendedor_id?: string | null;
       estado?: Order['estado'];
+      descripcion?: string | null;
       metodo_pago?: 'efectivo' | 'qr' | null;
       total?: number;
       detalles?: Array<{
@@ -211,9 +249,14 @@ export class PrismaOrderRepository implements IOrderRepository {
     return this.prisma.$transaction(async (tx) => {
       const data: any = {};
       if (order.cliente_id !== undefined) data.cliente_id = order.cliente_id;
-      if (order.vendedor_id !== undefined) data.vendedor_id = order.vendedor_id;
+      if (order.vendedor_id !== undefined) {
+        const current = await tx.pedido.findUniqueOrThrow({ where: { id }, select: { vendedor_id: true } });
+        data.vendedor_id = order.vendedor_id;
+        if (current.vendedor_id !== order.vendedor_id) data.orden_ruta = null;
+      }
       if (order.estado !== undefined) data.estado = order.estado;
       if (order.metodo_pago !== undefined) data.metodo_pago = order.metodo_pago;
+      if (order.descripcion !== undefined) data.descripcion = order.descripcion;
       if (order.total !== undefined) data.total = order.total;
 
       await tx.pedido.update({
@@ -304,6 +347,7 @@ export class PrismaOrderRepository implements IOrderRepository {
       },
       data: {
         fecha_creacion: nextDate,
+        orden_ruta: null,
         estado: 'pending',
         motivo_falla: null,
         fecha_entrega: null,

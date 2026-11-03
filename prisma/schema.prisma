@@ -96,6 +96,8 @@ model Pedido {
   codigo         String          @unique @db.VarChar(20)
   cliente_id     String          @db.Uuid
   vendedor_id    String?         @db.Uuid
+  descripcion    String?         @db.VarChar(1000)
+  orden_ruta     Int?
   estado         String          @default("pending") @db.VarChar(20) // 'pending' | 'loaded' | 'route' | 'delivered' | 'failed'
   total          Decimal         @default(0.00) @db.Decimal(10, 2)
   motivo_falla   String?

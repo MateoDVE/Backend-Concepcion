@@ -1,4 +1,4 @@
-import { IsUUID, IsNotEmpty, IsOptional, IsString, IsArray, ValidateNested, IsInt, IsNumber, Min, ArrayMinSize, IsIn } from 'class-validator';
+import { MaxLength, IsUUID, IsNotEmpty, IsOptional, IsString, IsArray, ValidateNested, IsInt, IsNumber, Min, ArrayMinSize, IsIn } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class OrderDetailDto {
@@ -18,6 +18,11 @@ export class OrderDetailDto {
 }
 
 export class CreateOrderDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  descripcion?: string | null;
+
   @IsUUID()
   @IsNotEmpty()
   cliente_id: string;

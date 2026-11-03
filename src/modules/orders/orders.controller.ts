@@ -1,5 +1,6 @@
 import { Controller, Get, Post, Put, Patch, Delete, Body, Param, Query, UseGuards, ParseUUIDPipe } from '@nestjs/common';
 import { OrdersService } from './orders.service';
+import { ReorderRouteDto } from './dto/reorder-route.dto';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
@@ -12,14 +13,23 @@ import { Roles } from '../auth/roles.decorator';
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
+  @Patch('route-order')
+  @Roles('admin')
+  async reorderRoute(@Body() dto: ReorderRouteDto) {
+    return this.ordersService.reorderRoute(dto);
+  }
+
   @Get()
   @Roles('admin', 'vendedor', 'almacen')
   async findAll(
     @Query('estado') estado?: string,
     @Query('vendedor_id') vendedorId?: string,
-    @Query('cliente_id') clienteId?: string
+    @Query('cliente_id') clienteId?: string,
+    @Query('fecha') fecha?: string,
+    @Query('fecha_inicio') fechaInicio?: string,
+    @Query('fecha_fin') fechaFin?: string
   ) {
-    return this.ordersService.findAll({ estado, vendedor_id: vendedorId, cliente_id: clienteId });
+    return this.ordersService.findAll({ estado, vendedor_id: vendedorId, cliente_id: clienteId, fecha, fecha_inicio: fechaInicio, fecha_fin: fechaFin });
   }
 
   @Get('suggested-price')

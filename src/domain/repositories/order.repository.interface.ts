@@ -1,6 +1,7 @@
 import { Order, OrderDetail } from '../entities/order.entity';
 
 export interface IOrderRepository {
+  reorderRoute(vendorId: string, date: string, orderIds: string[], previousOrderIds: string[]): Promise<void>;
   findById(id: string): Promise<Order | null>;
   findAll(filters?: { 
     estado?: string; 
@@ -15,6 +16,7 @@ export interface IOrderRepository {
     vendedor_id: string | null;
     estado: Order['estado'];
     total: number;
+    descripcion?: string | null;
     metodo_pago?: 'efectivo' | 'qr' | null;
     detalles: Array<{
       producto_id: string;
@@ -35,6 +37,7 @@ export interface IOrderRepository {
       cliente_id?: string;
       vendedor_id?: string | null;
       estado?: Order['estado'];
+      descripcion?: string | null;
       metodo_pago?: 'efectivo' | 'qr' | null;
       total?: number;
       detalles?: Array<{

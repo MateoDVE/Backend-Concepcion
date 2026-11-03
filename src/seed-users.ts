@@ -31,12 +31,12 @@ async function getOrCreateSupabaseUser(email: string, password: string) {
   console.log(`Buscando o creando usuario en Supabase Auth: ${email}...`);
   
   // 1. Check if user already exists
-  const { data: { users }, error: listError } = await supabase.auth.admin.listUsers();
+  const { data, error: listError } = await supabase.auth.admin.listUsers();
   if (listError) {
     throw new Error(`Error listing users: ${listError.message}`);
   }
 
-  const existingUser = users.find(u => u.email === email);
+  const existingUser = data.users.find(u => u.email === email);
   if (existingUser) {
     console.log(`Usuario existente encontrado con ID: ${existingUser.id}`);
     return existingUser.id;
