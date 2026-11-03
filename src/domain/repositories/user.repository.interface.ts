@@ -1,7 +1,19 @@
 import { User } from '../entities/user.entity';
 import { Vendor } from '../entities/vendor.entity';
 
+export type StaffUser = Pick<User, 'id' | 'usuario' | 'nombre' | 'rol' | 'activo'>;
+export interface NewStaff {
+  id: string;
+  usuario: string;
+  nombre: string;
+  rol: 'vendedor' | 'almacen';
+  telefono?: string;
+}
+
 export interface IUserRepository {
+  findAllStaff(): Promise<StaffUser[]>;
+  setStaffStatus(id: string, activo: boolean): Promise<void>;
+  createStaff(staff: NewStaff): Promise<StaffUser>;
   findUserById(id: string): Promise<User | null>;
   findUserByUsername(username: string): Promise<User | null>;
   createUser(user: Omit<User, 'id' | 'created_at' | 'updated_at'>): Promise<User>;

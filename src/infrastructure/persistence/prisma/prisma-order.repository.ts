@@ -164,6 +164,12 @@ export class PrismaOrderRepository implements IOrderRepository {
     fecha_entrega?: Date | null;
     fecha_creacion?: Date;
   }): Promise<Order> {
+    if (order.vendedor_id) {
+      const vendor = await this.prisma.vendedor.findUnique({ where: { id: order.vendedor_id }, include: { usuario: true } });
+      if (!vendor || vendor.activo === false || vendor.usuario?.activo === false) {
+        throw new BadRequestException('Selecciona un vendedor activo para asignar el pedido.');
+      }
+    }
     const created = await this.prisma.pedido.create({
       data: {
         codigo: order.codigo,
@@ -251,6 +257,12 @@ export class PrismaOrderRepository implements IOrderRepository {
       if (order.cliente_id !== undefined) data.cliente_id = order.cliente_id;
       if (order.vendedor_id !== undefined) {
         const current = await tx.pedido.findUniqueOrThrow({ where: { id }, select: { vendedor_id: true } });
+        if (order.vendedor_id && current.vendedor_id !== order.vendedor_id) {
+          const vendor = await tx.vendedor.findUnique({ where: { id: order.vendedor_id }, include: { usuario: true } });
+          if (!vendor || vendor.activo === false || vendor.usuario?.activo === false) {
+            throw new BadRequestException('Selecciona un vendedor activo para asignar el pedido.');
+          }
+        }
         data.vendedor_id = order.vendedor_id;
         if (current.vendedor_id !== order.vendedor_id) data.orden_ruta = null;
       }
