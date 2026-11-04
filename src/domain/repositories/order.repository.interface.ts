@@ -7,6 +7,7 @@ export interface IOrderRepository {
     estado?: string; 
     vendedor_id?: string; 
     cliente_id?: string;
+    fecha_programada?: string;
     fecha_inicio?: Date;
     fecha_fin?: Date;
   }): Promise<Order[]>;
@@ -16,6 +17,7 @@ export interface IOrderRepository {
     vendedor_id: string | null;
     estado: Order['estado'];
     total: number;
+    fecha_programada?: Date;
     descripcion?: string | null;
     metodo_pago?: 'efectivo' | 'qr' | null;
     detalles: Array<{
@@ -37,7 +39,8 @@ export interface IOrderRepository {
       cliente_id?: string;
       vendedor_id?: string | null;
       estado?: Order['estado'];
-      descripcion?: string | null;
+      fecha_programada?: Date;
+    descripcion?: string | null;
       metodo_pago?: 'efectivo' | 'qr' | null;
       total?: number;
       detalles?: Array<{

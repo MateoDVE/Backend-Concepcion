@@ -94,7 +94,7 @@ export class PrismaClosingRepository implements IClosingRepository {
           COALESCE(cd.diferencia, 0.00)::decimal AS diferencia,
           cd.observaciones
       FROM vendedores v
-      LEFT JOIN pedidos p ON p.vendedor_id = v.id AND (p.fecha_creacion AT TIME ZONE 'America/La_Paz')::date = ${targetDateStr}::date
+      LEFT JOIN pedidos p ON p.vendedor_id = v.id AND COALESCE(p.fecha_programada, (p.fecha_creacion AT TIME ZONE 'America/La_Paz')::date) = ${targetDateStr}::date
       LEFT JOIN cierres_diarios cd ON cd.vendedor_id = v.id AND cd.fecha::date = ${targetDateStr}::date
       WHERE v.activo = TRUE
       GROUP BY v.id, v.nombre, cd.total_recaudado, cd.diferencia, cd.observaciones;
@@ -106,7 +106,7 @@ export class PrismaClosingRepository implements IClosingRepository {
   async getGeneralReportHistorico(): Promise<any[]> {
     const results: any[] = await this.prisma.$queryRaw`
       WITH pedidos_actuales_mes AS (
-        SELECT to_char(fecha_creacion AT TIME ZONE 'America/La_Paz', 'YYYY-MM') AS mes,
+        SELECT to_char(COALESCE(fecha_programada, (fecha_creacion AT TIME ZONE 'America/La_Paz')::date), 'YYYY-MM') AS mes,
           COUNT(*)::int AS pedidos_actuales_mes,
           COUNT(*) FILTER (WHERE estado = 'delivered')::int AS entregados_actuales_mes,
           COUNT(*) FILTER (WHERE estado = 'failed')::int AS fallidos_actuales_mes
@@ -141,7 +141,7 @@ export class PrismaClosingRepository implements IClosingRepository {
           ROUND((SUM(CASE WHEN estado = 'delivered' THEN 1 ELSE 0 END)::decimal / NULLIF(COUNT(id), 0)) * 100, 2)::decimal AS porcentaje_efectividad,
           'EN_CURSO' AS tipo_registro
       FROM pedidos
-      WHERE (fecha_creacion AT TIME ZONE 'America/La_Paz')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'America/La_Paz')::date
+      WHERE COALESCE(fecha_programada, (fecha_creacion AT TIME ZONE 'America/La_Paz')::date) = (CURRENT_TIMESTAMP AT TIME ZONE 'America/La_Paz')::date
         AND vendedor_id IS NOT NULL
       GROUP BY (CURRENT_TIMESTAMP AT TIME ZONE 'America/La_Paz')::date::text
       )

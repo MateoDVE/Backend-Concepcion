@@ -103,6 +103,7 @@ model Pedido {
   motivo_falla   String?
   metodo_pago    String?         @db.VarChar(20) // 'efectivo' | 'qr'
   fecha_creacion DateTime?       @default(now()) @db.Timestamptz(6)
+  fecha_programada DateTime? @db.Date
   fecha_entrega  DateTime?       @db.Timestamptz(6)
   updated_at     DateTime?       @default(now()) @db.Timestamptz(6)
   cliente        Cliente         @relation(fields: [cliente_id], references: [id], onDelete: Restrict)
@@ -113,6 +114,7 @@ model Pedido {
   @@index([vendedor_id])
   @@index([estado])
   @@index([fecha_creacion])
+  @@index([fecha_programada, vendedor_id])
   @@map("pedidos")
 }
 

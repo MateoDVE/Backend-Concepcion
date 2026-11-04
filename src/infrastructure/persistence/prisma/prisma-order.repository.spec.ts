@@ -14,7 +14,10 @@ describe('Route persistence', () => {
     await repository.reorderRoute('vendor', '2026-10-28', ['b', 'a'], ['a', 'b']);
     expect(tx.pedido.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: {
       vendedor_id: 'vendor', estado: { in: ['pending', 'loaded', 'route'] },
-      fecha_creacion: { gte: new Date('2026-10-28T04:00:00Z'), lt: new Date('2026-10-29T04:00:00Z') },
+      OR: [
+        { fecha_programada: new Date('2026-10-28') },
+        { fecha_programada: null, fecha_creacion: { gte: new Date('2026-10-28T04:00:00Z'), lt: new Date('2026-10-29T04:00:00Z') } },
+      ],
     } }));
     expect(tx.pedido.update.mock.calls).toEqual([
       [{ where: { id: 'b' }, data: { orden_ruta: 1 } }],

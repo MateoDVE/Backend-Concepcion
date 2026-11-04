@@ -27,9 +27,10 @@ export class OrdersController {
     @Query('cliente_id') clienteId?: string,
     @Query('fecha') fecha?: string,
     @Query('fecha_inicio') fechaInicio?: string,
-    @Query('fecha_fin') fechaFin?: string
+    @Query('fecha_fin') fechaFin?: string,
+    @Query('fecha_programada') fechaProgramada?: string
   ) {
-    return this.ordersService.findAll({ estado, vendedor_id: vendedorId, cliente_id: clienteId, fecha, fecha_inicio: fechaInicio, fecha_fin: fechaFin });
+    return this.ordersService.findAll({ estado, vendedor_id: vendedorId, cliente_id: clienteId, fecha, fecha_inicio: fechaInicio, fecha_fin: fechaFin, fecha_programada: fechaProgramada });
   }
 
   @Get('suggested-price')

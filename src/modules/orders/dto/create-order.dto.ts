@@ -1,4 +1,4 @@
-import { MaxLength, IsUUID, IsNotEmpty, IsOptional, IsString, IsArray, ValidateNested, IsInt, IsNumber, Min, ArrayMinSize, IsIn } from 'class-validator';
+import { IsDateString, Matches, MaxLength, IsUUID, IsNotEmpty, IsOptional, IsString, IsArray, ValidateNested, IsInt, IsNumber, Min, ArrayMinSize, IsIn } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class OrderDetailDto {
@@ -18,6 +18,11 @@ export class OrderDetailDto {
 }
 
 export class CreateOrderDto {
+  @IsOptional()
+  @IsDateString({ strict: true })
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  fecha_programada?: string;
+
   @IsOptional()
   @IsString()
   @MaxLength(1000)

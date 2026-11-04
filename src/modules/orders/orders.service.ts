@@ -30,6 +30,7 @@ export class OrdersService {
     vendedor_id?: string;
     cliente_id?: string;
     fecha?: string;
+    fecha_programada?: string;
     fecha_inicio?: string | Date;
     fecha_fin?: string | Date;
   }) {
@@ -41,10 +42,15 @@ export class OrdersService {
       estado?: string;
       vendedor_id?: string;
       cliente_id?: string;
+      fecha_programada?: string;
       fecha_inicio?: Date;
       fecha_fin?: Date;
     } = {};
 
+    if (filters.fecha_programada) {
+      this.parseScheduledDate(filters.fecha_programada);
+      repoFilters.fecha_programada = filters.fecha_programada;
+    }
     if (filters.estado) repoFilters.estado = filters.estado;
     if (filters.vendedor_id) repoFilters.vendedor_id = filters.vendedor_id;
     if (filters.cliente_id) repoFilters.cliente_id = filters.cliente_id;
@@ -107,6 +113,14 @@ export class OrdersService {
     return product.precio_base;
   }
 
+  private parseScheduledDate(value: string): Date {
+    const date = new Date(value + 'T00:00:00Z');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || !Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== value) {
+      throw new BadRequestException('La fecha programada debe ser una fecha válida (AAAA-MM-DD).');
+    }
+    return date;
+  }
+
   async create(dto: CreateOrderDto) {
     // Validar cliente
     const client = await this.clientRepo.findById(dto.cliente_id);
@@ -149,6 +163,7 @@ export class OrdersService {
     const createdOrder = await this.orderRepo.create({
       codigo,
       descripcion: dto.descripcion?.trim() || null,
+      fecha_programada: dto.fecha_programada ? this.parseScheduledDate(dto.fecha_programada) : undefined,
       cliente_id: dto.cliente_id,
       vendedor_id: dto.vendedor_id ?? null,
       estado: dto.estado ?? 'pending',
@@ -230,6 +245,15 @@ export class OrdersService {
     const order = await this.findById(id);
 
     const updateData: any = {};
+    if (dto.fecha_programada !== undefined) {
+      const date = this.parseScheduledDate(dto.fecha_programada);
+      const previous = order.fecha_programada?.toISOString().slice(0, 10)
+        ?? new Intl.DateTimeFormat('en-CA', { timeZone: 'America/La_Paz' }).format(order.fecha_creacion);
+      if (order.estado === 'delivered' && previous !== dto.fecha_programada) {
+        throw new BadRequestException('Un pedido entregado no puede reprogramarse.');
+      }
+      updateData.fecha_programada = date;
+    }
     if (dto.descripcion !== undefined) {
       updateData.descripcion = dto.descripcion?.trim() || null;
     }
@@ -316,7 +340,7 @@ export class OrdersService {
       estado: 'pending',
       total: order.total,
       detalles: detallesProcesados,
-      fecha_creacion: tomorrow,
+      fecha_programada: new Date(tomorrow.toISOString().slice(0, 10)),
     });
   }
 
@@ -343,8 +367,7 @@ export class OrdersService {
 
     // 2. Buscar pedidos de la jornada que no fueron entregados (cargados, pendientes, fallados, ruta)
     const orders = await this.orderRepo.findAll({
-      fecha_inicio: startOfTodayUTC,
-      fecha_fin: endOfTodayUTC,
+      fecha_programada: dateStr,
     });
 
     const unfulfilled = orders.filter((o) =>

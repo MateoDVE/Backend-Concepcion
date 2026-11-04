@@ -13,7 +13,7 @@ export class PrismaOrderRepository implements IOrderRepository {
     try {
       await this.prisma.$transaction(async tx => {
         const orders = await tx.pedido.findMany({
-          where: { vendedor_id: vendorId, fecha_creacion: { gte: start, lt: end }, estado: { in: ['pending', 'loaded', 'route'] } },
+          where: { vendedor_id: vendorId, OR: [{ fecha_programada: new Date(date) }, { fecha_programada: null, fecha_creacion: { gte: start, lt: end } }], estado: { in: ['pending', 'loaded', 'route'] } },
           orderBy: [{ orden_ruta: { sort: 'asc', nulls: 'last' } }, { fecha_creacion: 'asc' }, { id: 'asc' }],
           select: { id: true, orden_ruta: true },
         });
@@ -54,6 +54,7 @@ export class PrismaOrderRepository implements IOrderRepository {
       metodo_pago: dbOrder.metodo_pago,
       fecha_creacion: dbOrder.fecha_creacion ?? new Date(),
       fecha_entrega: dbOrder.fecha_entrega,
+      fecha_programada: dbOrder.fecha_programada,
       updated_at: dbOrder.updated_at ?? new Date(),
       cliente: dbOrder.cliente
         ? {
@@ -108,6 +109,7 @@ export class PrismaOrderRepository implements IOrderRepository {
     estado?: string; 
     vendedor_id?: string; 
     cliente_id?: string;
+    fecha_programada?: string;
     fecha_inicio?: Date;
     fecha_fin?: Date;
   }): Promise<Order[]> {
@@ -131,6 +133,13 @@ export class PrismaOrderRepository implements IOrderRepository {
       }
     }
 
+    if (filters?.fecha_programada) {
+      const start = new Date(filters.fecha_programada + 'T00:00:00-04:00');
+      where.OR = [
+        { fecha_programada: new Date(filters.fecha_programada) },
+        { fecha_programada: null, fecha_creacion: { gte: start, lt: new Date(start.getTime() + 86400000) } }
+      ];
+    }
     const orders = await this.prisma.pedido.findMany({
       where,
       include: {
@@ -154,6 +163,7 @@ export class PrismaOrderRepository implements IOrderRepository {
     vendedor_id: string | null;
     estado: Order['estado'];
     total: number;
+    fecha_programada?: Date;
     descripcion?: string | null;
     metodo_pago?: 'efectivo' | 'qr' | null;
     detalles: Array<{
@@ -180,6 +190,7 @@ export class PrismaOrderRepository implements IOrderRepository {
         total: order.total,
         metodo_pago: order.metodo_pago,
         fecha_entrega: order.fecha_entrega,
+        fecha_programada: order.fecha_programada,
         fecha_creacion: order.fecha_creacion,
         detalles: {
           create: order.detalles.map((d) => ({
@@ -242,7 +253,8 @@ export class PrismaOrderRepository implements IOrderRepository {
       cliente_id?: string;
       vendedor_id?: string | null;
       estado?: Order['estado'];
-      descripcion?: string | null;
+      fecha_programada?: Date;
+    descripcion?: string | null;
       metodo_pago?: 'efectivo' | 'qr' | null;
       total?: number;
       detalles?: Array<{
@@ -269,6 +281,11 @@ export class PrismaOrderRepository implements IOrderRepository {
       if (order.estado !== undefined) data.estado = order.estado;
       if (order.metodo_pago !== undefined) data.metodo_pago = order.metodo_pago;
       if (order.descripcion !== undefined) data.descripcion = order.descripcion;
+      if (order.fecha_programada !== undefined) {
+        const current = await tx.pedido.findUniqueOrThrow({ where: { id }, select: { fecha_programada: true } });
+        data.fecha_programada = order.fecha_programada;
+        if (current.fecha_programada?.getTime() !== order.fecha_programada.getTime()) data.orden_ruta = null;
+      }
       if (order.total !== undefined) data.total = order.total;
 
       await tx.pedido.update({
@@ -358,7 +375,7 @@ export class PrismaOrderRepository implements IOrderRepository {
         id: { in: orderIds },
       },
       data: {
-        fecha_creacion: nextDate,
+        fecha_programada: new Date(nextDate.toISOString().slice(0, 10)),
         orden_ruta: null,
         estado: 'pending',
         motivo_falla: null,
