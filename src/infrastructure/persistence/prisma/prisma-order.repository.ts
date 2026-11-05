@@ -15,8 +15,15 @@ export class PrismaOrderRepository implements IOrderRepository {
         const orders = await tx.pedido.findMany({
           where: { vendedor_id: vendorId, OR: [{ fecha_programada: new Date(date) }, { fecha_programada: null, fecha_creacion: { gte: start, lt: end } }], estado: { in: ['pending', 'loaded', 'route'] } },
           orderBy: [{ orden_ruta: { sort: 'asc', nulls: 'last' } }, { fecha_creacion: 'asc' }, { id: 'asc' }],
-          select: { id: true, orden_ruta: true },
+          select: { id: true, orden_ruta: true, estado: true, fecha_creacion: true, codigo: true },
         });
+        // Match the admin/vendor fallback before validating the previous sequence.
+        const priority: Record<string, number> = { route: 0, loaded: 1, pending: 2 };
+        orders.sort((a, b) =>
+          (a.orden_ruta ?? Number.MAX_SAFE_INTEGER) - (b.orden_ruta ?? Number.MAX_SAFE_INTEGER)
+          || (priority[a.estado] ?? 99) - (priority[b.estado] ?? 99)
+          || (a.fecha_creacion?.getTime() ?? 0) - (b.fecha_creacion?.getTime() ?? 0)
+          || (a.codigo || a.id).localeCompare(b.codigo || b.id));
         const ids = orders.map(o => o.id);
         if (ids.length !== previousOrderIds.length || ids.some((id, i) => id !== previousOrderIds[i])) {
           throw new ConflictException('La ruta cambió. Actualiza los pedidos e intenta nuevamente.');
@@ -230,21 +237,53 @@ export class PrismaOrderRepository implements IOrderRepository {
       data.metodo_pago = extra.metodo_pago;
     }
 
-    const updated = await this.prisma.pedido.update({
-      where: { id },
-      data,
-      include: {
-        cliente: true,
-        vendedor: true,
-        detalles: {
-          include: {
-            producto: true,
-          },
-        },
-      },
-    });
-
-    return this.mapToOrder(updated);
+    // Retry serialization conflicts using a fresh snapshot. Stock and status commit together.
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await this.prisma.$transaction(async tx => {
+          const current = await tx.pedido.findUniqueOrThrow({
+            where: { id }, include: { detalles: true },
+          });
+          const stockDirection = Number(current.estado === 'delivered') - Number(estado === 'delivered');
+          for (const detail of [...current.detalles].sort((a, b) => a.producto_id.localeCompare(b.producto_id))) {
+            if (stockDirection < 0) {
+              // Check and decrement together, so concurrent deliveries cannot oversell.
+              const result = await tx.producto.updateMany({
+                where: { id: detail.producto_id, stock: { gte: detail.cantidad } },
+                data: { stock: { decrement: detail.cantidad } },
+              });
+              if (result.count === 0) {
+                const product = await tx.producto.findUnique({
+                  where: { id: detail.producto_id }, select: { nombre: true, stock: true },
+                });
+                throw new BadRequestException(product
+                  ? `Stock insuficiente de ${product.nombre}. Disponible: ${product.stock}; requerido: ${detail.cantidad}. Registra la existencia real en Inventario antes de confirmar la entrega.`
+                  : 'No se puede entregar: uno de los productos ya no existe.');
+              }
+            } else if (stockDirection > 0) {
+              await tx.producto.update({
+                where: { id: detail.producto_id },
+                data: { stock: { increment: stockDirection * detail.cantidad } },
+              });
+            }
+          }
+          const updated = await tx.pedido.update({
+            where: { id },
+            data: {
+              ...data,
+              // A repeated confirmation must preserve the original delivery timestamp.
+              ...(current.estado === 'delivered' && estado === 'delivered'
+                ? { fecha_entrega: current.fecha_entrega } : {}),
+            },
+            include: { cliente: true, vendedor: true, detalles: { include: { producto: true } } },
+          });
+          return this.mapToOrder(updated);
+        }, { isolationLevel: 'Serializable' });
+      } catch (error) {
+        if ((error as { code?: string }).code !== 'P2034') throw error;
+        if (attempt >= 2) throw new ConflictException('El pedido está siendo actualizado. Intenta confirmar nuevamente.');
+      }
+    }
   }
 
   async update(

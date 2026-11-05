@@ -188,57 +188,15 @@ export class OrdersService {
   }
 
   async updateStatus(id: string, dto: UpdateOrderStatusDto) {
-    const order = await this.findById(id);
-
-    if (dto.estado === 'failed' && (!dto.motivo_falla || dto.motivo_falla.trim() === '')) {
+    await this.findById(id);
+    if (dto.estado === 'failed' && !dto.motivo_falla?.trim()) {
       throw new BadRequestException('Debe indicar un motivo de falla cuando el pedido queda en estado fallido (failed)');
     }
-
-    const dataUpdate: { motivo_falla?: string | null; fecha_entrega?: Date | null; metodo_pago?: 'efectivo' | 'qr' | null } = {};
-
-    // Si pasa a entregado (delivered), actualizar fecha de entrega y método de pago
-    if (dto.estado === 'delivered') {
-      dataUpdate.fecha_entrega = new Date();
-      dataUpdate.motivo_falla = undefined;
-      dataUpdate.metodo_pago = dto.metodo_pago || 'efectivo';
-
-      // Descontar del inventario/stock solo si no estaba previamente entregado
-      if (order.estado !== 'delivered' && order.detalles) {
-        for (const detail of order.detalles) {
-          // Descontamos stock. Notar que mandamos cantidad negativa a updateStock
-          try {
-            await this.productRepo.updateStock(detail.producto_id, -detail.cantidad);
-          } catch (err: any) {
-            throw new BadRequestException(`No se pudo procesar la entrega. Error de inventario: ${err.message}`);
-          }
-        }
-      }
-    } else if (dto.estado === 'failed') {
-      dataUpdate.fecha_entrega = null;
-      dataUpdate.motivo_falla = dto.motivo_falla;
-      dataUpdate.metodo_pago = null;
-
-      // Si el pedido estaba entregado y cambia a otro estado, devolvemos el stock al inventario
-      if (order.estado === 'delivered' && order.detalles) {
-        for (const detail of order.detalles) {
-          await this.productRepo.updateStock(detail.producto_id, detail.cantidad);
-        }
-      }
-    } else {
-      dataUpdate.fecha_entrega = null;
-      dataUpdate.motivo_falla = null;
-      dataUpdate.metodo_pago = null;
-
-      // Si el pedido estaba entregado y cambia a otro estado, devolvemos el stock al inventario
-      if (order.estado === 'delivered' && order.detalles) {
-        for (const detail of order.detalles) {
-          await this.productRepo.updateStock(detail.producto_id, detail.cantidad);
-        }
-      }
-    }
-
-    const updatedOrder = await this.orderRepo.updateStatus(id, dto.estado, dataUpdate);
-    return updatedOrder;
+    return this.orderRepo.updateStatus(id, dto.estado, {
+      fecha_entrega: dto.estado === 'delivered' ? new Date() : null,
+      motivo_falla: dto.estado === 'failed' ? dto.motivo_falla : null,
+      metodo_pago: dto.estado === 'delivered' ? (dto.metodo_pago || 'efectivo') : null,
+    });
   }
 
   async update(id: string, dto: UpdateOrderDto) {
