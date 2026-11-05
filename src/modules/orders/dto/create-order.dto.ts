@@ -1,4 +1,4 @@
-import { IsDateString, Matches, MaxLength, IsUUID, IsNotEmpty, IsOptional, IsString, IsArray, ValidateNested, IsInt, IsNumber, Min, ArrayMinSize, IsIn } from 'class-validator';
+import { IsDateString, Matches, MaxLength, IsUUID, IsNotEmpty, IsOptional, IsString, IsArray, ArrayUnique, ValidateNested, IsInt, IsNumber, Min, ArrayMinSize, IsIn } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class OrderDetailDto {
@@ -46,6 +46,7 @@ export class CreateOrderDto {
   metodo_pago?: 'efectivo' | 'qr';
 
   @IsArray()
+  @ArrayUnique((detail: OrderDetailDto) => detail?.producto_id, { message: 'Cada producto debe aparecer una sola vez. Suma sus cantidades en una misma fila.' })
   @ArrayMinSize(1)
   @ValidateNested({ each: true })
   @Type(() => OrderDetailDto)
